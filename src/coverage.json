@@ -1,0 +1,111 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-03T21:02:57.823Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 6,
+    "implemented": 6,
+    "items": [
+      {
+        "id": "REQ-4",
+        "summary": "Add a backend-persisted, admin-editable \"game catalog\" that controls (per game) the lobby cover image, display name, and description; update the Game Lobby UI to render its game cards from this backend catalog instead of the current hardcoded `games` array in `frontend/src/pages/GameLobby.tsx`.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/GameLobby.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/GameLobby.tsx"
+        ]
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Extend the Admin Settings UI (`frontend/src/components/AdminSettingsModal.tsx`) to include controls (a new tab or section) for editing each game catalog entry: upload/replace the lobby cover image, edit the game display name, and edit the description; wire this UI to the new backend game catalog APIs using React Query hooks in `frontend/src/hooks/useQueries.ts`.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/admin/GameCatalogEditor.tsx",
+          "frontend/src/components/AdminSettingsModal.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/admin/GameCatalogEditor.tsx",
+          "frontend/src/components/AdminSettingsModal.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Update Blackjack rendering (`frontend/src/pages/games/BlackjackGame.tsx`) so the dealt cards display as card-face images (not only text ranks/suits) by mapping each drawn card (rank + suit) to a specific image from the backend-provided symbol set; support a 52-card symbol set (rank × suit) with a safe fallback to the current text rendering when card images are not available.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/games/BlackjackGame.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/games/BlackjackGame.tsx"
+        ]
+      },
+      {
+        "id": "REQ-7",
+        "summary": "Update the Wheel Spin game UI (`frontend/src/pages/games/WheelSpinGame.tsx`) so wheel segments display their prize text directly on the wheel segments (e.g., \"0x\", \"1x\", \"2x\", etc.), oriented/readably placed within each segment while the wheel spins.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/games/WheelSpinGame.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/games/WheelSpinGame.tsx"
+        ]
+      },
+      {
+        "id": "REQ-8",
+        "summary": "Add a horizontal ad banner to the Game Lobby page (`frontend/src/pages/GameLobby.tsx`) that is edge-to-edge and pinned to the bottom of the page (or viewport) as a distinct banner area.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/GameLobby.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/GameLobby.tsx"
+        ]
+      },
+      {
+        "id": "REQ-9",
+        "summary": "Update the footer branding text in `frontend/src/components/Footer.tsx` so the footer displays \"DexFans 2026\" (English) instead of the current copyright string.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/Footer.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/Footer.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "build-request.json",
+    "caffeine.lock.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/AdminSettingsModal.tsx",
+    "frontend/src/components/Footer.tsx",
+    "frontend/src/components/admin/GameCatalogEditor.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/GameLobby.tsx",
+    "frontend/src/pages/games/BlackjackGame.tsx",
+    "frontend/src/pages/games/WheelSpinGame.tsx",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

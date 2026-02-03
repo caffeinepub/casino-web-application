@@ -55,7 +55,7 @@ export function Header() {
               {isAuthenticated && userProfile && (
                 <div className="hidden sm:flex items-center gap-2 bg-yellow-500/20 px-4 py-2 rounded-full border border-yellow-500/30">
                   <img src="/assets/generated/diamond-icon-transparent.dim_64x64.png" alt="Diamond" className="w-5 h-5" />
-                  <span className="text-yellow-400 font-bold">{Number(userProfile.balance).toLocaleString()}</span>
+                  <span className="text-yellow-400 font-bold">{Number(userProfile.diamondBalance).toLocaleString()}</span>
                 </div>
               )}
 

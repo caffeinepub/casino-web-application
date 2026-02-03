@@ -1,0 +1,40 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-03T21:02:57.771Z",
+  "summary": "Diff implements major parts of the requested scope: footer branding updated, lobby now renders from a backend-driven game catalog with fallback defaults, admin UI gains a Game Catalog tab/editor, backend adds game catalog storage and admin-only mutations, Blackjack and WheelSpin UIs appear updated toward card-face images and labeled wheel segments. One notable unrequested addition is support for adding brand-new catalog entries (not just editing existing ones).",
+  "missing_requirements": [],
+  "hallucinated_features": [
+    {
+      "description": "Support for adding new game catalog entries (API + frontend hook/editor), whereas the request only required updating existing entries (at minimum the five default games).",
+      "reason": "BuildRequest REQ-4/REQ-5 require an admin-only update method and editing controls for existing lobby games; the diff adds an explicit \"add\" method/hook as well.",
+      "evidence": [
+        "backend/main.mo (public shared func addGameCatalogEntry)",
+        "frontend/src/components/admin/GameCatalogEditor.tsx (imports useAddGameCatalogEntry)",
+        "frontend/src/hooks/useQueries.ts (summary mentions game catalog management; hook name referenced by editor)"
+      ]
+    },
+    {
+      "description": "Added a backend migration module/wiring not explicitly requested.",
+      "reason": "BuildRequest does not mention data migrations; diff introduces migration scaffolding and wiring in the main actor.",
+      "evidence": [
+        "backend/migration.mo",
+        "backend/main.mo ((with migration = Migration.run))"
+      ]
+    }
+  ],
+  "confidence": 0.56,
+  "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/AdminSettingsModal.tsx",
+    "frontend/src/components/Footer.tsx",
+    "frontend/src/components/admin/GameCatalogEditor.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/GameLobby.tsx",
+    "frontend/src/pages/games/BlackjackGame.tsx",
+    "frontend/src/pages/games/WheelSpinGame.tsx",
+    "project_state.json"
+  ]
+}

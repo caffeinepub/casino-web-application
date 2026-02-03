@@ -1,0 +1,120 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Admin-editable lobby catalog, improved Blackjack/Wheel visuals, lobby banner, and footer branding",
+  "requirements": [
+    {
+      "id": "REQ-4",
+      "summary": "Render Game Lobby game cards from the backend game catalog with a safe default fallback to the current hardcoded list.",
+      "acceptanceCriteria": [
+        "Backend exposes a query method to fetch the current game catalog for authenticated users.",
+        "Backend exposes an admin-only update method to modify game catalog entries (at minimum: cover image, display name, description).",
+        "Game Lobby shows the updated cover image, name, and description after an admin saves changes and the page refreshes (or React Query refetch occurs).",
+        "Non-admin users cannot update the game catalog (backend enforces admin permission and traps/returns an error).",
+        "If the backend has no stored catalog yet, the lobby still renders using the current default data (equivalent to today’s `games` list: slots/blackjack/dice/wheel/jackpot with their current default images)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add React Query hooks for game catalog read/update using the backend interface (fetch all catalog entries; update a catalog entry). Use these hooks to support lobby rendering and admin editing. (Use the authorization component’s role checks via existing admin queries/mutations patterns where applicable; Verify the component's usage instructions before implementing.)"
+        },
+        {
+          "path": "frontend/src/pages/GameLobby.tsx",
+          "operation": "modify",
+          "description": "Replace the hardcoded `games` rendering with backend catalog-driven cards. Keep a local default catalog equivalent to the existing five entries (slots/blackjack/dice/wheel/jackpot with their current generated images) and fall back to it when the backend returns an empty catalog or the query cannot provide data. Map catalog `gameId` values to existing game components for navigation, and render cover images via ExternalBlob direct URLs when provided. (Leverage blob-storage ExternalBlob image URLs; Verify the component's usage instructions before implementing.)"
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Extend the Admin Settings modal with a new section for editing each game catalog entry (image, title, description) and persist changes via React Query hooks.",
+      "acceptanceCriteria": [
+        "Admin can edit at least the five existing lobby games (slots, blackjack, dice, wheel, jackpot).",
+        "Cover image upload validates that an image is selected and shows a preview before saving.",
+        "Saving updates persists to the backend and invalidates/refetches the lobby catalog query so the lobby reflects changes without a canister redeploy.",
+        "Non-admin users do not see these editing controls (or controls are disabled), and backend still prevents updates even if a user tries to call the mutation."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/admin/GameCatalogEditor.tsx",
+          "operation": "create",
+          "description": "Create an admin-only editor UI for the game catalog entries (slots/blackjack/dice/wheel/jackpot): editable title and description fields plus cover image upload/replace with client-side validation and preview. Use backend catalog hooks and submit via an update mutation per entry, showing success/error toasts consistent with existing admin tooling. (Use blob-storage ExternalBlob for image upload/preview and authorization role checks for guarding admin-only functionality; Verify the component's usage instructions before implementing.)"
+        },
+        {
+          "path": "frontend/src/components/AdminSettingsModal.tsx",
+          "operation": "modify",
+          "description": "Add a new tab/section for \"Game Catalog\" and render the new GameCatalogEditor inside it. Gate the tab/controls behind an admin check so non-admin users do not see or cannot interact with the catalog editing UI. (Use the authorization component’s role-based access control patterns already used in the app; Verify the component's usage instructions before implementing.)"
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Wire catalog editor behavior: ensure the game catalog update mutation invalidates/refetches the game catalog query used by the lobby. Include robust error handling for unauthorized errors and validation feedback. (Use blob-storage ExternalBlob for image payloads; Verify the component's usage instructions before implementing.)"
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Render Blackjack dealt cards as correct card-face images using a 52-card symbol set (rank × suit) with text fallback when images are unavailable.",
+      "acceptanceCriteria": [
+        "When a symbol set for cards contains 52 images, each card dealt uses the correct card-face image for its rank and suit.",
+        "If the cards symbol set is missing or insufficient (e.g., fewer than 52 images), the game continues to work and falls back to the existing text display (e.g., “A♠”).",
+        "The images are rendered inside the existing card UI containers without layout overflow or distortion."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/games/BlackjackGame.tsx",
+          "operation": "modify",
+          "description": "Update the card model and draw logic to track rank (1–13) and suit (0–3) and compute a 0–51 image index (suit * 13 + (rank - 1)). Use card-face images only when the backend-provided cards symbol set contains at least 52 symbols; otherwise keep current text rendering. Ensure the card image remains contained within the existing card container (no overflow/distortion). (Leverage blob-storage ExternalBlob direct URLs for symbol images; Verify the component's usage instructions before implementing.)"
+        }
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "summary": "Render prize text directly onto the Wheel Spin wheel segments so labels rotate with the wheel and remain legible during spins.",
+      "acceptanceCriteria": [
+        "Each segment has visible prize text on the wheel itself (not only in the separate grid below).",
+        "Prize text rotates with the wheel during spins and remains legible (reasonable font size/contrast).",
+        "The existing spin behavior and outcome logic remain functional."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/games/WheelSpinGame.tsx",
+          "operation": "modify",
+          "description": "Add segment label rendering inside the rotating wheel element: place each segment’s multiplier text (e.g., \"0x\", \"1x\", \"2x\") at an appropriate radius and angle per segment so the label is visually inside the segment and rotates with the wheel. Keep current spin animation and outcome selection logic unchanged."
+        }
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "summary": "Add a full-width horizontal ad banner area pinned to the bottom of the Game Lobby page/viewport with default visible content.",
+      "acceptanceCriteria": [
+        "The lobby shows a full-width banner at the bottom that spans edge-to-edge regardless of container width.",
+        "The banner does not break core lobby interactions (game card clicks, scrolling, etc.).",
+        "Banner area has default content so it is visible even before any future configuration is added."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/GameLobby.tsx",
+          "operation": "modify",
+          "description": "Add a distinct bottom-pinned, edge-to-edge banner area (e.g., fixed or sticky) with default placeholder ad content. Ensure the lobby content layout accounts for the banner height so interactions and scrolling remain usable (e.g., avoid covering game cards/buttons)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "summary": "Update footer branding text to display “DexFans 2026”.",
+      "acceptanceCriteria": [
+        "Footer visibly displays the text \"DexFans 2026\".",
+        "No remaining footer text contradicts the requested branding (e.g., remove/replace the current “© 2025…” line as needed to match the request)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/Footer.tsx",
+          "operation": "modify",
+          "description": "Replace the existing copyright/branding line so the footer displays exactly \"DexFans 2026\" (English), removing or adjusting any remaining text that contradicts the requested branding."
+        }
+      ]
+    }
+  ]
+}

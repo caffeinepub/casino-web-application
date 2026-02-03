@@ -5,10 +5,9 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { useGetCallerUserProfile, useUpdateUserProfile, useGetTransactionLog } from '../hooks/useQueries';
-import { TransactionFilter } from '../backend';
-import { toast } from 'sonner';
-import { ArrowDownToLine, ArrowUpFromLine, TrendingUp, TrendingDown, Coins } from 'lucide-react';
+import { useGetCallerUserProfile, useDeposit, useWithdraw, useGetTransactionHistory, useIsUserEligibleForWithdrawal, useGetCasinoSettings } from '../hooks/useQueries';
+import { ArrowDownToLine, ArrowUpFromLine, TrendingUp, TrendingDown, Coins, Trophy, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from './ui/alert';
 
 interface WalletModalProps {
   open: boolean;
@@ -17,63 +16,52 @@ interface WalletModalProps {
 
 export function WalletModal({ open, onOpenChange }: WalletModalProps) {
   const { data: userProfile } = useGetCallerUserProfile();
-  const updateProfile = useUpdateUserProfile();
+  const { data: transactions = [] } = useGetTransactionHistory();
+  const { data: isEligible } = useIsUserEligibleForWithdrawal();
+  const { data: settings } = useGetCasinoSettings();
+  const deposit = useDeposit();
+  const withdraw = useWithdraw();
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [filter, setFilter] = useState<TransactionFilter>(TransactionFilter.all);
+  const [filter, setFilter] = useState<string>('all');
 
-  const { data: transactions = [] } = useGetTransactionLog({
-    transactionFilter: filter,
-    count: BigInt(50),
-    offset: BigInt(0),
-    searchText: '',
+  const minDeposit = settings ? Number(settings.minDeposit) : 100;
+  const minWithdrawal = settings ? Number(settings.minWithdrawal) : 100;
+
+  const filteredTransactions = transactions.filter((tx) => {
+    if (filter === 'all') return true;
+    if (filter === 'deposits') return tx.transactionType === 'deposit';
+    if (filter === 'withdrawals') return tx.transactionType === 'withdrawal';
+    if (filter === 'wins') return tx.transactionType === 'game_win';
+    if (filter === 'losses') return tx.transactionType === 'game_loss';
+    return true;
   });
-
-  const canWithdraw = userProfile && userProfile.totalWagered >= userProfile.signupBonus;
 
   const handleDeposit = async () => {
     const amount = parseInt(depositAmount);
-    if (!amount || amount < 10) {
-      toast.error('Minimum deposit is 10 diamonds');
+    if (!amount || amount < minDeposit) {
       return;
     }
-    if (!userProfile) return;
-
-    await updateProfile.mutateAsync({
-      ...userProfile,
-      balance: userProfile.balance + BigInt(amount),
-    });
+    await deposit.mutateAsync(BigInt(amount));
     setDepositAmount('');
-    toast.success(`Deposited ${amount} diamonds!`);
   };
 
   const handleWithdraw = async () => {
     const amount = parseInt(withdrawAmount);
-    if (!amount || amount < 50) {
-      toast.error('Minimum withdrawal is 50 diamonds');
+    if (!amount || amount < minWithdrawal) {
       return;
     }
-    if (!userProfile) return;
-    if (userProfile.balance < BigInt(amount)) {
-      toast.error('Insufficient balance');
-      return;
-    }
-    if (!canWithdraw) {
-      toast.error(`You must wager your signup bonus (${Number(userProfile.signupBonus)} diamonds) before withdrawing`);
-      return;
-    }
-
-    await updateProfile.mutateAsync({
-      ...userProfile,
-      balance: userProfile.balance - BigInt(amount),
-    });
+    await withdraw.mutateAsync(BigInt(amount));
     setWithdrawAmount('');
-    toast.success(`Withdrew ${amount} diamonds!`);
   };
+
+  const wageringProgress = userProfile
+    ? Math.min((Number(userProfile.diamondsWagered) / 1000) * 100, 100)
+    : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             <Coins className="w-6 h-6 text-yellow-500" />
@@ -81,20 +69,47 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 my-4">
           <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 p-4 rounded-lg border border-yellow-500/30">
             <p className="text-sm text-gray-400">Balance</p>
-            <p className="text-2xl font-bold text-yellow-400">{Number(userProfile?.balance || 0).toLocaleString()}</p>
+            <p className="text-2xl font-bold text-yellow-400">{Number(userProfile?.diamondBalance || 0).toLocaleString()}</p>
           </div>
           <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 p-4 rounded-lg border border-blue-500/30">
             <p className="text-sm text-gray-400">Total Wagered</p>
-            <p className="text-2xl font-bold text-blue-400">{Number(userProfile?.totalWagered || 0).toLocaleString()}</p>
+            <p className="text-2xl font-bold text-blue-400">{Number(userProfile?.diamondsWagered || 0).toLocaleString()}</p>
           </div>
           <div className="bg-gradient-to-br from-green-500/20 to-emerald-500/20 p-4 rounded-lg border border-green-500/30">
-            <p className="text-sm text-gray-400">Signup Bonus</p>
-            <p className="text-2xl font-bold text-green-400">{Number(userProfile?.signupBonus || 0).toLocaleString()}</p>
+            <p className="text-sm text-gray-400">Total Won</p>
+            <p className="text-2xl font-bold text-green-400">{Number(userProfile?.totalDiamondsWon || 0).toLocaleString()}</p>
+          </div>
+          <div className="bg-gradient-to-br from-red-500/20 to-pink-500/20 p-4 rounded-lg border border-red-500/30">
+            <p className="text-sm text-gray-400">Win Streak</p>
+            <p className="text-2xl font-bold text-red-400 flex items-center gap-1">
+              <Trophy className="w-5 h-5" />
+              {Number(userProfile?.currentStreak || 0)}
+            </p>
           </div>
         </div>
+
+        {!userProfile?.hasCompletedWageringRequirement && (
+          <Alert className="bg-yellow-500/10 border-yellow-500/30">
+            <AlertCircle className="h-4 w-4 text-yellow-500" />
+            <AlertDescription className="text-yellow-400">
+              <div className="space-y-2">
+                <p className="font-medium">Wagering Requirement: {wageringProgress.toFixed(0)}% Complete</p>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full transition-all"
+                    style={{ width: `${wageringProgress}%` }}
+                  />
+                </div>
+                <p className="text-sm">
+                  Wager {Number(userProfile?.diamondsWagered || 0)} / 1000 diamonds to unlock withdrawals
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs defaultValue="transactions" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -106,105 +121,107 @@ export function WalletModal({ open, onOpenChange }: WalletModalProps) {
           <TabsContent value="transactions" className="space-y-4">
             <div className="flex items-center gap-2">
               <Label>Filter:</Label>
-              <Select value={filter} onValueChange={(value) => setFilter(value as TransactionFilter)}>
+              <Select value={filter} onValueChange={setFilter}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={TransactionFilter.all}>All</SelectItem>
-                  <SelectItem value={TransactionFilter.wins}>Wins</SelectItem>
-                  <SelectItem value={TransactionFilter.losses}>Losses</SelectItem>
-                  <SelectItem value={TransactionFilter.deposits}>Deposits</SelectItem>
-                  <SelectItem value={TransactionFilter.withdrawals}>Withdrawals</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="wins">Wins</SelectItem>
+                  <SelectItem value="losses">Losses</SelectItem>
+                  <SelectItem value="deposits">Deposits</SelectItem>
+                  <SelectItem value="withdrawals">Withdrawals</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {transactions.length === 0 ? (
+            <div className="space-y-2 max-h-[350px] overflow-y-auto">
+              {filteredTransactions.length === 0 ? (
                 <p className="text-center text-gray-400 py-8">No transactions yet</p>
               ) : (
-                transactions.map((tx) => (
-                  <div key={Number(tx.log.id)} className="flex items-center justify-between p-3 bg-card rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      {tx.log.transactionType.__kind__ === 'deposit' && <ArrowDownToLine className="w-5 h-5 text-green-500" />}
-                      {tx.log.transactionType.__kind__ === 'withdrawal' && <ArrowUpFromLine className="w-5 h-5 text-red-500" />}
-                      {tx.log.transactionType.__kind__ === 'spinOutcome' && (
-                        tx.log.transactionType.spinOutcome.winAmount > tx.log.transactionType.spinOutcome.betAmount ? (
-                          <TrendingUp className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <TrendingDown className="w-5 h-5 text-red-500" />
-                        )
-                      )}
-                      <div>
-                        <p className="font-medium">{tx.log.description}</p>
+                filteredTransactions.map((tx, index) => {
+                  const isWin = tx.transactionType === 'game_win' || tx.transactionType === 'deposit' || tx.transactionType === 'signup_bonus';
+                  const isLoss = tx.transactionType === 'game_loss' || tx.transactionType === 'withdrawal';
+                  
+                  return (
+                    <div key={index} className="flex items-center justify-between p-3 bg-card rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        {tx.transactionType === 'deposit' && <ArrowDownToLine className="w-5 h-5 text-green-500" />}
+                        {tx.transactionType === 'withdrawal' && <ArrowUpFromLine className="w-5 h-5 text-red-500" />}
+                        {tx.transactionType === 'game_win' && <TrendingUp className="w-5 h-5 text-green-500" />}
+                        {tx.transactionType === 'game_loss' && <TrendingDown className="w-5 h-5 text-red-500" />}
+                        {tx.transactionType === 'signup_bonus' && <Trophy className="w-5 h-5 text-yellow-500" />}
+                        <div>
+                          <p className="font-medium capitalize">
+                            {tx.transactionType.replace('_', ' ')}
+                            {tx.gameType && ` - ${tx.gameType}`}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(Number(tx.timestamp) / 1000000).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`font-bold ${isWin ? 'text-green-500' : isLoss ? 'text-red-500' : 'text-gray-400'}`}>
+                          {isWin ? '+' : isLoss ? '-' : ''}{Number(tx.amount).toLocaleString()}
+                        </p>
                         <p className="text-xs text-gray-400">
-                          {new Date(Number(tx.log.timestamp) / 1000000).toLocaleString()}
+                          Balance: {Number(tx.balanceAfter).toLocaleString()}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      {tx.log.transactionType.__kind__ === 'deposit' && (
-                        <p className="text-green-500 font-bold">+{Number(tx.log.transactionType.deposit)}</p>
-                      )}
-                      {tx.log.transactionType.__kind__ === 'withdrawal' && (
-                        <p className="text-red-500 font-bold">-{Number(tx.log.transactionType.withdrawal)}</p>
-                      )}
-                      {tx.log.transactionType.__kind__ === 'spinOutcome' && (
-                        <p className={tx.log.transactionType.spinOutcome.winAmount > tx.log.transactionType.spinOutcome.betAmount ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
-                          {tx.log.transactionType.spinOutcome.winAmount > tx.log.transactionType.spinOutcome.betAmount ? '+' : ''}
-                          {Number(tx.log.transactionType.spinOutcome.winAmount) - Number(tx.log.transactionType.spinOutcome.betAmount)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </TabsContent>
 
           <TabsContent value="deposit" className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="deposit">Amount (min: 10 diamonds)</Label>
+              <Label htmlFor="deposit">Amount (min: {minDeposit} diamonds)</Label>
               <Input
                 id="deposit"
                 type="number"
                 placeholder="Enter amount"
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
-                min="10"
+                min={minDeposit}
               />
             </div>
-            <Button onClick={handleDeposit} className="w-full" disabled={updateProfile.isPending}>
+            <Button onClick={handleDeposit} className="w-full" disabled={deposit.isPending || !depositAmount || parseInt(depositAmount) < minDeposit}>
               <ArrowDownToLine className="w-4 h-4 mr-2" />
-              {updateProfile.isPending ? 'Processing...' : 'Deposit'}
+              {deposit.isPending ? 'Processing...' : 'Deposit'}
             </Button>
           </TabsContent>
 
           <TabsContent value="withdraw" className="space-y-4">
-            {!canWithdraw && (
-              <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4">
-                <p className="text-sm text-yellow-400">
-                  You must wager your signup bonus ({Number(userProfile?.signupBonus || 0)} diamonds) before withdrawing.
-                  Current wagered: {Number(userProfile?.totalWagered || 0)} diamonds
-                </p>
-              </div>
+            {!isEligible && (
+              <Alert className="bg-yellow-500/10 border-yellow-500/30">
+                <AlertCircle className="h-4 w-4 text-yellow-500" />
+                <AlertDescription className="text-yellow-400">
+                  You must complete the wagering requirement before withdrawing.
+                </AlertDescription>
+              </Alert>
             )}
             <div className="space-y-2">
-              <Label htmlFor="withdraw">Amount (min: 50 diamonds)</Label>
+              <Label htmlFor="withdraw">Amount (min: {minWithdrawal} diamonds)</Label>
               <Input
                 id="withdraw"
                 type="number"
                 placeholder="Enter amount"
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
-                min="50"
-                disabled={!canWithdraw}
+                min={minWithdrawal}
+                disabled={!isEligible}
               />
             </div>
-            <Button onClick={handleWithdraw} className="w-full" disabled={!canWithdraw || updateProfile.isPending}>
+            <Button 
+              onClick={handleWithdraw} 
+              className="w-full" 
+              disabled={!isEligible || withdraw.isPending || !withdrawAmount || parseInt(withdrawAmount) < minWithdrawal}
+            >
               <ArrowUpFromLine className="w-4 h-4 mr-2" />
-              {updateProfile.isPending ? 'Processing...' : 'Withdraw'}
+              {withdraw.isPending ? 'Processing...' : 'Withdraw'}
             </Button>
           </TabsContent>
         </Tabs>

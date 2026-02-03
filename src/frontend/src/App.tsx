@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useInternetIdentity } from './hooks/useInternetIdentity';
-import { useGetCallerUserProfile, useSaveCallerUserProfile } from './hooks/useQueries';
+import { useGetCallerUserProfile, useRegisterUser } from './hooks/useQueries';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { ProfileSetupModal } from './components/ProfileSetupModal';
@@ -11,19 +11,13 @@ import { ThemeProvider } from 'next-themes';
 export default function App() {
   const { identity, loginStatus } = useInternetIdentity();
   const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
-  const saveProfile = useSaveCallerUserProfile();
+  const registerUser = useRegisterUser();
 
   const isAuthenticated = !!identity;
   const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null;
 
   const handleProfileSetup = async (username: string) => {
-    await saveProfile.mutateAsync({
-      username,
-      balance: BigInt(1000),
-      totalWagered: BigInt(0),
-      signupBonus: BigInt(1000),
-      registrationTime: BigInt(Date.now() * 1000000),
-    });
+    await registerUser.mutateAsync(username);
   };
 
   if (loginStatus === 'initializing' || (isAuthenticated && profileLoading)) {
@@ -50,7 +44,7 @@ export default function App() {
         <ProfileSetupModal
           open={showProfileSetup}
           onSubmit={handleProfileSetup}
-          isLoading={saveProfile.isPending}
+          isLoading={registerUser.isPending}
         />
         <Toaster />
       </div>

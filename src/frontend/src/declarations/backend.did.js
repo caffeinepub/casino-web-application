@@ -8,190 +8,432 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const _CaffeineStorageCreateCertificateResult = IDL.Record({
+  'method' : IDL.Text,
+  'blob_hash' : IDL.Text,
+});
+export const _CaffeineStorageRefillInformation = IDL.Record({
+  'proposed_top_up_amount' : IDL.Opt(IDL.Nat),
+});
+export const _CaffeineStorageRefillResult = IDL.Record({
+  'success' : IDL.Opt(IDL.Bool),
+  'topped_up_amount' : IDL.Opt(IDL.Nat),
+});
+export const ExternalBlob = IDL.Vec(IDL.Nat8);
+export const GameCatalogEntry = IDL.Record({
+  'title' : IDL.Text,
+  'icon' : ExternalBlob,
+  'gameId' : IDL.Text,
+  'description' : IDL.Text,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
-export const UserSettings = IDL.Record({
-  'notificationsEnabled' : IDL.Bool,
-  'username' : IDL.Text,
-});
-export const TransactionFilter = IDL.Variant({
-  'all' : IDL.Null,
-  'wins' : IDL.Null,
-  'losses' : IDL.Null,
-  'withdrawals' : IDL.Null,
-  'deposits' : IDL.Null,
-});
-export const TransactionLogSearchModifier = IDL.Record({
-  'transactionFilter' : IDL.Opt(TransactionFilter),
-  'count' : IDL.Nat,
-  'offset' : IDL.Nat,
-  'searchText' : IDL.Text,
-});
-export const GameTransactionType = IDL.Variant({
-  'deposit' : IDL.Nat,
-  'withdrawal' : IDL.Nat,
-  'spinOutcome' : IDL.Record({ 'betAmount' : IDL.Nat, 'winAmount' : IDL.Nat }),
+export const ShoppingItem = IDL.Record({
+  'productName' : IDL.Text,
+  'currency' : IDL.Text,
+  'quantity' : IDL.Nat,
+  'priceInCents' : IDL.Nat,
+  'productDescription' : IDL.Text,
 });
 export const Time = IDL.Int;
-export const GameTransaction = IDL.Record({
-  'id' : IDL.Nat,
-  'transactionType' : GameTransactionType,
-  'user' : IDL.Principal,
-  'description' : IDL.Text,
-  'timestamp' : Time,
-});
-export const TransactionLog = IDL.Record({ 'log' : GameTransaction });
 export const UserProfile = IDL.Record({
+  'lastLoginTime' : Time,
   'username' : IDL.Text,
-  'balance' : IDL.Nat,
-  'signupBonus' : IDL.Nat,
-  'totalWagered' : IDL.Nat,
-  'registrationTime' : Time,
-});
-export const CasinoSettings = IDL.Record({
-  'minDeposit' : IDL.Nat,
-  'ownerPercentage' : IDL.Float64,
-  'dealerUserName' : IDL.Text,
-  'minWithdrawal' : IDL.Nat,
-  'currencyName' : IDL.Text,
-});
-export const CasinoStats = IDL.Record({
+  'totalLosses' : IDL.Nat,
+  'maxStreak' : IDL.Nat,
+  'diamondsLost' : IDL.Nat,
   'totalGamesPlayed' : IDL.Nat,
-  'totalWagers' : IDL.Nat,
+  'diamondsWon' : IDL.Nat,
+  'totalWins' : IDL.Nat,
   'totalDiamondsBet' : IDL.Nat,
   'totalDiamondsWon' : IDL.Nat,
-  'activeGameSessions' : IDL.Nat,
+  'diamondsWagered' : IDL.Nat,
+  'fastestGameTime' : IDL.Nat,
+  'hasCompletedWageringRequirement' : IDL.Bool,
+  'diamondBalance' : IDL.Nat,
+  'registrationTime' : Time,
+  'currentStreak' : IDL.Nat,
 });
-export const GameStats = IDL.Record({
-  'wins' : IDL.Nat,
-  'losses' : IDL.Nat,
-  'totalBet' : IDL.Nat,
-  'totalWin' : IDL.Nat,
-  'spins' : IDL.Nat,
+export const CasinoSettings = IDL.Record({
+  'houseEdgePercentage' : IDL.Nat,
+  'minDeposit' : IDL.Nat,
+  'minWithdrawal' : IDL.Nat,
+  'dealerUsername' : IDL.Text,
+  'currencyName' : IDL.Text,
+});
+export const GameOutcome = IDL.Record({
+  'betAmount' : IDL.Nat,
+  'winAmount' : IDL.Nat,
+  'timestamp' : Time,
+  'gameType' : IDL.Text,
+  'isWin' : IDL.Bool,
+});
+export const StripeSessionStatus = IDL.Variant({
+  'completed' : IDL.Record({
+    'userPrincipal' : IDL.Opt(IDL.Text),
+    'response' : IDL.Text,
+  }),
+  'failed' : IDL.Record({ 'error' : IDL.Text }),
+});
+export const Symbol = IDL.Record({
+  'id' : IDL.Text,
+  'name' : IDL.Text,
+  'image' : ExternalBlob,
+});
+export const GameSymbolSet = IDL.Record({
+  'cards' : IDL.Vec(Symbol),
+  'dice' : IDL.Vec(Symbol),
+  'slots' : IDL.Vec(Symbol),
+  'wheel' : IDL.Vec(Symbol),
+});
+export const Transaction = IDL.Record({
+  'transactionType' : IDL.Text,
+  'timestamp' : Time,
+  'gameType' : IDL.Opt(IDL.Text),
+  'balanceAfter' : IDL.Nat,
+  'amount' : IDL.Nat,
+});
+export const StripeConfiguration = IDL.Record({
+  'allowedCountries' : IDL.Vec(IDL.Text),
+  'secretKey' : IDL.Text,
+});
+export const http_header = IDL.Record({
+  'value' : IDL.Text,
+  'name' : IDL.Text,
+});
+export const http_request_result = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
+export const TransformationInput = IDL.Record({
+  'context' : IDL.Vec(IDL.Nat8),
+  'response' : http_request_result,
+});
+export const TransformationOutput = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
 });
 
 export const idlService = IDL.Service({
-  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'createUserSettings' : IDL.Func([UserSettings], [], []),
-  'filterTransactionLog' : IDL.Func(
-      [TransactionLogSearchModifier],
-      [IDL.Vec(TransactionLog)],
+  '_caffeineStorageBlobIsLive' : IDL.Func(
+      [IDL.Vec(IDL.Nat8)],
+      [IDL.Bool],
       ['query'],
     ),
+  '_caffeineStorageBlobsToDelete' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Vec(IDL.Nat8))],
+      ['query'],
+    ),
+  '_caffeineStorageConfirmBlobDeletion' : IDL.Func(
+      [IDL.Vec(IDL.Vec(IDL.Nat8))],
+      [],
+      [],
+    ),
+  '_caffeineStorageCreateCertificate' : IDL.Func(
+      [IDL.Text],
+      [_CaffeineStorageCreateCertificateResult],
+      [],
+    ),
+  '_caffeineStorageRefillCashier' : IDL.Func(
+      [IDL.Opt(_CaffeineStorageRefillInformation)],
+      [_CaffeineStorageRefillResult],
+      [],
+    ),
+  '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
+  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'addGameCatalogEntry' : IDL.Func([GameCatalogEntry], [], []),
+  'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createCheckoutSession' : IDL.Func(
+      [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
+      [IDL.Text],
+      [],
+    ),
+  'deposit' : IDL.Func([IDL.Nat], [], []),
+  'getAllGameCatalogEntries' : IDL.Func(
+      [],
+      [IDL.Vec(GameCatalogEntry)],
+      ['query'],
+    ),
+  'getAllUsers' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Principal, UserProfile))],
+      ['query'],
+    ),
+  'getBalance' : IDL.Func([], [IDL.Nat], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getCasinoSettings' : IDL.Func([], [IDL.Opt(CasinoSettings)], ['query']),
-  'getCasinoStats' : IDL.Func([], [CasinoStats], ['query']),
+  'getCasinoSettings' : IDL.Func([], [CasinoSettings], ['query']),
+  'getGameCatalogEntry' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(GameCatalogEntry)],
+      ['query'],
+    ),
+  'getGameHistory' : IDL.Func([], [IDL.Vec(GameOutcome)], ['query']),
+  'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
+  'getSymbolSet' : IDL.Func([IDL.Text], [GameSymbolSet], ['query']),
+  'getTopPlayers' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
+  'getTopPlayersByStreak' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
+  'getTopPlayersByWins' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
+  'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),
+  'getTransactionHistory' : IDL.Func([], [IDL.Vec(Transaction)], ['query']),
+  'getTransactionHistoryForUser' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(Transaction)],
+      ['query'],
+    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'hasCompletedWageringRequirement' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'processPayout' : IDL.Func([IDL.Nat], [], []),
+  'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+  'isUserEligibleForWithdrawal' : IDL.Func([], [IDL.Bool], ['query']),
+  'recordGameOutcome' : IDL.Func(
+      [IDL.Text, IDL.Nat, IDL.Nat, IDL.Bool],
+      [],
+      [],
+    ),
+  'registerUser' : IDL.Func([IDL.Text], [], []),
+  'removeGameCatalogEntry' : IDL.Func([IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setCurrencyName' : IDL.Func([IDL.Text], [], []),
+  'setDealerUsername' : IDL.Func([IDL.Text], [], []),
+  'setHouseEdge' : IDL.Func([IDL.Nat], [], []),
+  'setMinDeposit' : IDL.Func([IDL.Nat], [], []),
+  'setMinWithdrawal' : IDL.Func([IDL.Nat], [], []),
+  'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+  'transform' : IDL.Func(
+      [TransformationInput],
+      [TransformationOutput],
+      ['query'],
+    ),
   'updateCasinoSettings' : IDL.Func([CasinoSettings], [], []),
-  'updateGameStats' : IDL.Func([GameStats], [], []),
+  'updateGameCatalogEntry' : IDL.Func([IDL.Text, GameCatalogEntry], [], []),
+  'updateSymbolSet' : IDL.Func([IDL.Text, GameSymbolSet], [], []),
+  'updateWageredAmount' : IDL.Func([IDL.Nat], [], []),
+  'withdraw' : IDL.Func([IDL.Nat], [], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const _CaffeineStorageCreateCertificateResult = IDL.Record({
+    'method' : IDL.Text,
+    'blob_hash' : IDL.Text,
+  });
+  const _CaffeineStorageRefillInformation = IDL.Record({
+    'proposed_top_up_amount' : IDL.Opt(IDL.Nat),
+  });
+  const _CaffeineStorageRefillResult = IDL.Record({
+    'success' : IDL.Opt(IDL.Bool),
+    'topped_up_amount' : IDL.Opt(IDL.Nat),
+  });
+  const ExternalBlob = IDL.Vec(IDL.Nat8);
+  const GameCatalogEntry = IDL.Record({
+    'title' : IDL.Text,
+    'icon' : ExternalBlob,
+    'gameId' : IDL.Text,
+    'description' : IDL.Text,
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const UserSettings = IDL.Record({
-    'notificationsEnabled' : IDL.Bool,
-    'username' : IDL.Text,
-  });
-  const TransactionFilter = IDL.Variant({
-    'all' : IDL.Null,
-    'wins' : IDL.Null,
-    'losses' : IDL.Null,
-    'withdrawals' : IDL.Null,
-    'deposits' : IDL.Null,
-  });
-  const TransactionLogSearchModifier = IDL.Record({
-    'transactionFilter' : IDL.Opt(TransactionFilter),
-    'count' : IDL.Nat,
-    'offset' : IDL.Nat,
-    'searchText' : IDL.Text,
-  });
-  const GameTransactionType = IDL.Variant({
-    'deposit' : IDL.Nat,
-    'withdrawal' : IDL.Nat,
-    'spinOutcome' : IDL.Record({
-      'betAmount' : IDL.Nat,
-      'winAmount' : IDL.Nat,
-    }),
+  const ShoppingItem = IDL.Record({
+    'productName' : IDL.Text,
+    'currency' : IDL.Text,
+    'quantity' : IDL.Nat,
+    'priceInCents' : IDL.Nat,
+    'productDescription' : IDL.Text,
   });
   const Time = IDL.Int;
-  const GameTransaction = IDL.Record({
-    'id' : IDL.Nat,
-    'transactionType' : GameTransactionType,
-    'user' : IDL.Principal,
-    'description' : IDL.Text,
-    'timestamp' : Time,
-  });
-  const TransactionLog = IDL.Record({ 'log' : GameTransaction });
   const UserProfile = IDL.Record({
+    'lastLoginTime' : Time,
     'username' : IDL.Text,
-    'balance' : IDL.Nat,
-    'signupBonus' : IDL.Nat,
-    'totalWagered' : IDL.Nat,
-    'registrationTime' : Time,
-  });
-  const CasinoSettings = IDL.Record({
-    'minDeposit' : IDL.Nat,
-    'ownerPercentage' : IDL.Float64,
-    'dealerUserName' : IDL.Text,
-    'minWithdrawal' : IDL.Nat,
-    'currencyName' : IDL.Text,
-  });
-  const CasinoStats = IDL.Record({
+    'totalLosses' : IDL.Nat,
+    'maxStreak' : IDL.Nat,
+    'diamondsLost' : IDL.Nat,
     'totalGamesPlayed' : IDL.Nat,
-    'totalWagers' : IDL.Nat,
+    'diamondsWon' : IDL.Nat,
+    'totalWins' : IDL.Nat,
     'totalDiamondsBet' : IDL.Nat,
     'totalDiamondsWon' : IDL.Nat,
-    'activeGameSessions' : IDL.Nat,
+    'diamondsWagered' : IDL.Nat,
+    'fastestGameTime' : IDL.Nat,
+    'hasCompletedWageringRequirement' : IDL.Bool,
+    'diamondBalance' : IDL.Nat,
+    'registrationTime' : Time,
+    'currentStreak' : IDL.Nat,
   });
-  const GameStats = IDL.Record({
-    'wins' : IDL.Nat,
-    'losses' : IDL.Nat,
-    'totalBet' : IDL.Nat,
-    'totalWin' : IDL.Nat,
-    'spins' : IDL.Nat,
+  const CasinoSettings = IDL.Record({
+    'houseEdgePercentage' : IDL.Nat,
+    'minDeposit' : IDL.Nat,
+    'minWithdrawal' : IDL.Nat,
+    'dealerUsername' : IDL.Text,
+    'currencyName' : IDL.Text,
+  });
+  const GameOutcome = IDL.Record({
+    'betAmount' : IDL.Nat,
+    'winAmount' : IDL.Nat,
+    'timestamp' : Time,
+    'gameType' : IDL.Text,
+    'isWin' : IDL.Bool,
+  });
+  const StripeSessionStatus = IDL.Variant({
+    'completed' : IDL.Record({
+      'userPrincipal' : IDL.Opt(IDL.Text),
+      'response' : IDL.Text,
+    }),
+    'failed' : IDL.Record({ 'error' : IDL.Text }),
+  });
+  const Symbol = IDL.Record({
+    'id' : IDL.Text,
+    'name' : IDL.Text,
+    'image' : ExternalBlob,
+  });
+  const GameSymbolSet = IDL.Record({
+    'cards' : IDL.Vec(Symbol),
+    'dice' : IDL.Vec(Symbol),
+    'slots' : IDL.Vec(Symbol),
+    'wheel' : IDL.Vec(Symbol),
+  });
+  const Transaction = IDL.Record({
+    'transactionType' : IDL.Text,
+    'timestamp' : Time,
+    'gameType' : IDL.Opt(IDL.Text),
+    'balanceAfter' : IDL.Nat,
+    'amount' : IDL.Nat,
+  });
+  const StripeConfiguration = IDL.Record({
+    'allowedCountries' : IDL.Vec(IDL.Text),
+    'secretKey' : IDL.Text,
+  });
+  const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
+  const http_request_result = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
+  const TransformationInput = IDL.Record({
+    'context' : IDL.Vec(IDL.Nat8),
+    'response' : http_request_result,
+  });
+  const TransformationOutput = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
   });
   
   return IDL.Service({
-    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'createUserSettings' : IDL.Func([UserSettings], [], []),
-    'filterTransactionLog' : IDL.Func(
-        [TransactionLogSearchModifier],
-        [IDL.Vec(TransactionLog)],
+    '_caffeineStorageBlobIsLive' : IDL.Func(
+        [IDL.Vec(IDL.Nat8)],
+        [IDL.Bool],
         ['query'],
       ),
+    '_caffeineStorageBlobsToDelete' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Vec(IDL.Nat8))],
+        ['query'],
+      ),
+    '_caffeineStorageConfirmBlobDeletion' : IDL.Func(
+        [IDL.Vec(IDL.Vec(IDL.Nat8))],
+        [],
+        [],
+      ),
+    '_caffeineStorageCreateCertificate' : IDL.Func(
+        [IDL.Text],
+        [_CaffeineStorageCreateCertificateResult],
+        [],
+      ),
+    '_caffeineStorageRefillCashier' : IDL.Func(
+        [IDL.Opt(_CaffeineStorageRefillInformation)],
+        [_CaffeineStorageRefillResult],
+        [],
+      ),
+    '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
+    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'addGameCatalogEntry' : IDL.Func([GameCatalogEntry], [], []),
+    'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createCheckoutSession' : IDL.Func(
+        [IDL.Vec(ShoppingItem), IDL.Text, IDL.Text],
+        [IDL.Text],
+        [],
+      ),
+    'deposit' : IDL.Func([IDL.Nat], [], []),
+    'getAllGameCatalogEntries' : IDL.Func(
+        [],
+        [IDL.Vec(GameCatalogEntry)],
+        ['query'],
+      ),
+    'getAllUsers' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Principal, UserProfile))],
+        ['query'],
+      ),
+    'getBalance' : IDL.Func([], [IDL.Nat], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getCasinoSettings' : IDL.Func([], [IDL.Opt(CasinoSettings)], ['query']),
-    'getCasinoStats' : IDL.Func([], [CasinoStats], ['query']),
+    'getCasinoSettings' : IDL.Func([], [CasinoSettings], ['query']),
+    'getGameCatalogEntry' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(GameCatalogEntry)],
+        ['query'],
+      ),
+    'getGameHistory' : IDL.Func([], [IDL.Vec(GameOutcome)], ['query']),
+    'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
+    'getSymbolSet' : IDL.Func([IDL.Text], [GameSymbolSet], ['query']),
+    'getTopPlayers' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
+    'getTopPlayersByStreak' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
+    'getTopPlayersByWins' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
+    'getTotalUsers' : IDL.Func([], [IDL.Nat], ['query']),
+    'getTransactionHistory' : IDL.Func([], [IDL.Vec(Transaction)], ['query']),
+    'getTransactionHistoryForUser' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(Transaction)],
+        ['query'],
+      ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'hasCompletedWageringRequirement' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'processPayout' : IDL.Func([IDL.Nat], [], []),
+    'isStripeConfigured' : IDL.Func([], [IDL.Bool], ['query']),
+    'isUserEligibleForWithdrawal' : IDL.Func([], [IDL.Bool], ['query']),
+    'recordGameOutcome' : IDL.Func(
+        [IDL.Text, IDL.Nat, IDL.Nat, IDL.Bool],
+        [],
+        [],
+      ),
+    'registerUser' : IDL.Func([IDL.Text], [], []),
+    'removeGameCatalogEntry' : IDL.Func([IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setCurrencyName' : IDL.Func([IDL.Text], [], []),
+    'setDealerUsername' : IDL.Func([IDL.Text], [], []),
+    'setHouseEdge' : IDL.Func([IDL.Nat], [], []),
+    'setMinDeposit' : IDL.Func([IDL.Nat], [], []),
+    'setMinWithdrawal' : IDL.Func([IDL.Nat], [], []),
+    'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+    'transform' : IDL.Func(
+        [TransformationInput],
+        [TransformationOutput],
+        ['query'],
+      ),
     'updateCasinoSettings' : IDL.Func([CasinoSettings], [], []),
-    'updateGameStats' : IDL.Func([GameStats], [], []),
+    'updateGameCatalogEntry' : IDL.Func([IDL.Text, GameCatalogEntry], [], []),
+    'updateSymbolSet' : IDL.Func([IDL.Text, GameSymbolSet], [], []),
+    'updateWageredAmount' : IDL.Func([IDL.Nat], [], []),
+    'withdraw' : IDL.Func([IDL.Nat], [], []),
   });
 };
 

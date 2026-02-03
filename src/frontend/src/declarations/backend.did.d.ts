@@ -11,81 +11,171 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export interface CasinoSettings {
+  'houseEdgePercentage' : bigint,
   'minDeposit' : bigint,
-  'ownerPercentage' : number,
-  'dealerUserName' : string,
   'minWithdrawal' : bigint,
+  'dealerUsername' : string,
   'currencyName' : string,
 }
-export interface CasinoStats {
-  'totalGamesPlayed' : bigint,
-  'totalWagers' : bigint,
-  'totalDiamondsBet' : bigint,
-  'totalDiamondsWon' : bigint,
-  'activeGameSessions' : bigint,
-}
-export interface GameStats {
-  'wins' : bigint,
-  'losses' : bigint,
-  'totalBet' : bigint,
-  'totalWin' : bigint,
-  'spins' : bigint,
-}
-export interface GameTransaction {
-  'id' : bigint,
-  'transactionType' : GameTransactionType,
-  'user' : Principal,
+export type ExternalBlob = Uint8Array;
+export interface GameCatalogEntry {
+  'title' : string,
+  'icon' : ExternalBlob,
+  'gameId' : string,
   'description' : string,
-  'timestamp' : Time,
 }
-export type GameTransactionType = { 'deposit' : bigint } |
-  { 'withdrawal' : bigint } |
-  { 'spinOutcome' : { 'betAmount' : bigint, 'winAmount' : bigint } };
+export interface GameOutcome {
+  'betAmount' : bigint,
+  'winAmount' : bigint,
+  'timestamp' : Time,
+  'gameType' : string,
+  'isWin' : boolean,
+}
+export interface GameSymbolSet {
+  'cards' : Array<Symbol>,
+  'dice' : Array<Symbol>,
+  'slots' : Array<Symbol>,
+  'wheel' : Array<Symbol>,
+}
+export interface ShoppingItem {
+  'productName' : string,
+  'currency' : string,
+  'quantity' : bigint,
+  'priceInCents' : bigint,
+  'productDescription' : string,
+}
+export interface StripeConfiguration {
+  'allowedCountries' : Array<string>,
+  'secretKey' : string,
+}
+export type StripeSessionStatus = {
+    'completed' : { 'userPrincipal' : [] | [string], 'response' : string }
+  } |
+  { 'failed' : { 'error' : string } };
+export interface Symbol {
+  'id' : string,
+  'name' : string,
+  'image' : ExternalBlob,
+}
 export type Time = bigint;
-export type TransactionFilter = { 'all' : null } |
-  { 'wins' : null } |
-  { 'losses' : null } |
-  { 'withdrawals' : null } |
-  { 'deposits' : null };
-export interface TransactionLog { 'log' : GameTransaction }
-export interface TransactionLogSearchModifier {
-  'transactionFilter' : [] | [TransactionFilter],
-  'count' : bigint,
-  'offset' : bigint,
-  'searchText' : string,
+export interface Transaction {
+  'transactionType' : string,
+  'timestamp' : Time,
+  'gameType' : [] | [string],
+  'balanceAfter' : bigint,
+  'amount' : bigint,
+}
+export interface TransformationInput {
+  'context' : Uint8Array,
+  'response' : http_request_result,
+}
+export interface TransformationOutput {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
 }
 export interface UserProfile {
+  'lastLoginTime' : Time,
   'username' : string,
-  'balance' : bigint,
-  'signupBonus' : bigint,
-  'totalWagered' : bigint,
+  'totalLosses' : bigint,
+  'maxStreak' : bigint,
+  'diamondsLost' : bigint,
+  'totalGamesPlayed' : bigint,
+  'diamondsWon' : bigint,
+  'totalWins' : bigint,
+  'totalDiamondsBet' : bigint,
+  'totalDiamondsWon' : bigint,
+  'diamondsWagered' : bigint,
+  'fastestGameTime' : bigint,
+  'hasCompletedWageringRequirement' : boolean,
+  'diamondBalance' : bigint,
   'registrationTime' : Time,
+  'currentStreak' : bigint,
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
-export interface UserSettings {
-  'notificationsEnabled' : boolean,
-  'username' : string,
+export interface _CaffeineStorageCreateCertificateResult {
+  'method' : string,
+  'blob_hash' : string,
+}
+export interface _CaffeineStorageRefillInformation {
+  'proposed_top_up_amount' : [] | [bigint],
+}
+export interface _CaffeineStorageRefillResult {
+  'success' : [] | [boolean],
+  'topped_up_amount' : [] | [bigint],
+}
+export interface http_header { 'value' : string, 'name' : string }
+export interface http_request_result {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
 }
 export interface _SERVICE {
-  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'createUserSettings' : ActorMethod<[UserSettings], undefined>,
-  'filterTransactionLog' : ActorMethod<
-    [TransactionLogSearchModifier],
-    Array<TransactionLog>
+  '_caffeineStorageBlobIsLive' : ActorMethod<[Uint8Array], boolean>,
+  '_caffeineStorageBlobsToDelete' : ActorMethod<[], Array<Uint8Array>>,
+  '_caffeineStorageConfirmBlobDeletion' : ActorMethod<
+    [Array<Uint8Array>],
+    undefined
   >,
+  '_caffeineStorageCreateCertificate' : ActorMethod<
+    [string],
+    _CaffeineStorageCreateCertificateResult
+  >,
+  '_caffeineStorageRefillCashier' : ActorMethod<
+    [[] | [_CaffeineStorageRefillInformation]],
+    _CaffeineStorageRefillResult
+  >,
+  '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
+  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addGameCatalogEntry' : ActorMethod<[GameCatalogEntry], undefined>,
+  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createCheckoutSession' : ActorMethod<
+    [Array<ShoppingItem>, string, string],
+    string
+  >,
+  'deposit' : ActorMethod<[bigint], undefined>,
+  'getAllGameCatalogEntries' : ActorMethod<[], Array<GameCatalogEntry>>,
+  'getAllUsers' : ActorMethod<[], Array<[Principal, UserProfile]>>,
+  'getBalance' : ActorMethod<[], bigint>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getCasinoSettings' : ActorMethod<[], [] | [CasinoSettings]>,
-  'getCasinoStats' : ActorMethod<[], CasinoStats>,
+  'getCasinoSettings' : ActorMethod<[], CasinoSettings>,
+  'getGameCatalogEntry' : ActorMethod<[string], [] | [GameCatalogEntry]>,
+  'getGameHistory' : ActorMethod<[], Array<GameOutcome>>,
+  'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
+  'getSymbolSet' : ActorMethod<[string], GameSymbolSet>,
+  'getTopPlayers' : ActorMethod<[], Array<UserProfile>>,
+  'getTopPlayersByStreak' : ActorMethod<[], Array<UserProfile>>,
+  'getTopPlayersByWins' : ActorMethod<[], Array<UserProfile>>,
+  'getTotalUsers' : ActorMethod<[], bigint>,
+  'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
+  'getTransactionHistoryForUser' : ActorMethod<[Principal], Array<Transaction>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'hasCompletedWageringRequirement' : ActorMethod<[], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'processPayout' : ActorMethod<[bigint], undefined>,
+  'isStripeConfigured' : ActorMethod<[], boolean>,
+  'isUserEligibleForWithdrawal' : ActorMethod<[], boolean>,
+  'recordGameOutcome' : ActorMethod<
+    [string, bigint, bigint, boolean],
+    undefined
+  >,
+  'registerUser' : ActorMethod<[string], undefined>,
+  'removeGameCatalogEntry' : ActorMethod<[string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setCurrencyName' : ActorMethod<[string], undefined>,
+  'setDealerUsername' : ActorMethod<[string], undefined>,
+  'setHouseEdge' : ActorMethod<[bigint], undefined>,
+  'setMinDeposit' : ActorMethod<[bigint], undefined>,
+  'setMinWithdrawal' : ActorMethod<[bigint], undefined>,
+  'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'updateCasinoSettings' : ActorMethod<[CasinoSettings], undefined>,
-  'updateGameStats' : ActorMethod<[GameStats], undefined>,
+  'updateGameCatalogEntry' : ActorMethod<[string, GameCatalogEntry], undefined>,
+  'updateSymbolSet' : ActorMethod<[string, GameSymbolSet], undefined>,
+  'updateWageredAmount' : ActorMethod<[bigint], undefined>,
+  'withdraw' : ActorMethod<[bigint], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
