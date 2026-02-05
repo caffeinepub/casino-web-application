@@ -1,40 +1,40 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-03T21:02:57.771Z",
-  "summary": "Diff implements major parts of the requested scope: footer branding updated, lobby now renders from a backend-driven game catalog with fallback defaults, admin UI gains a Game Catalog tab/editor, backend adds game catalog storage and admin-only mutations, Blackjack and WheelSpin UIs appear updated toward card-face images and labeled wheel segments. One notable unrequested addition is support for adding brand-new catalog entries (not just editing existing ones).",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-05T04:05:20.640Z",
+  "summary": "The diff updates frontend asset mapping to point the `site-logo` fallback at `/assets/generated/site-logo-fallback.dim_256x256.png`, and imports the shared constant in `Header.tsx`. However, the required static PNG file is not added in the diff summary, and there is no clear evidence (in the truncated header diff) of an `onError` image-load fallback handler.",
+  "missing_requirements": [
     {
-      "description": "Support for adding new game catalog entries (API + frontend hook/editor), whereas the request only required updating existing entries (at minimum the five default games).",
-      "reason": "BuildRequest REQ-4/REQ-5 require an admin-only update method and editing controls for existing lobby games; the diff adds an explicit \"add\" method/hook as well.",
+      "id": "REQ-12",
+      "requirement": "Add the static fallback image at `frontend/public/assets/generated/site-logo-fallback.dim_256x256.png` and ensure it is 256×256 with transparency preserved.",
+      "reason": "No new files were added, and the diff explicitly lists no added files; the required PNG asset is not present in the change summary.",
       "evidence": [
-        "backend/main.mo (public shared func addGameCatalogEntry)",
-        "frontend/src/components/admin/GameCatalogEditor.tsx (imports useAddGameCatalogEntry)",
-        "frontend/src/hooks/useQueries.ts (summary mentions game catalog management; hook name referenced by editor)"
+        "File diff summary: Added: 0 (no new static asset)"
       ]
     },
     {
-      "description": "Added a backend migration module/wiring not explicitly requested.",
-      "reason": "BuildRequest does not mention data migrations; diff introduces migration scaffolding and wiring in the main actor.",
+      "id": "REQ-12",
+      "requirement": "If the header logo image fails to load, the UI still falls back to `/assets/generated/site-logo-fallback.dim_256x256.png` without breaking layout.",
+      "reason": "`Header.tsx` is truncated and does not show any `img` `onError` (or similar) logic to swap the `src` to the fallback upon load failure; cannot confirm implementation from provided evidence.",
       "evidence": [
-        "backend/migration.mo",
-        "backend/main.mo ((with migration = Migration.run))"
+        "frontend/src/components/Header.tsx (truncated)"
       ]
     }
   ],
-  "confidence": 0.56,
+  "hallucinated_features": [
+    {
+      "description": "Added a `LOADING_LOGO_FALLBACK` constant and a `loading-logo` entry in the canonical app assets list.",
+      "reason": "The BuildRequest only asks for a default fallback for the site logo; it does not request adding a loading-logo fallback constant/asset mapping.",
+      "evidence": [
+        "frontend/src/lib/appAssets.ts"
+      ]
+    }
+  ],
+  "confidence": 0.74,
   "changed_files": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/AdminSettingsModal.tsx",
-    "frontend/src/components/Footer.tsx",
-    "frontend/src/components/admin/GameCatalogEditor.tsx",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/GameLobby.tsx",
-    "frontend/src/pages/games/BlackjackGame.tsx",
-    "frontend/src/pages/games/WheelSpinGame.tsx",
+    "frontend/src/components/Header.tsx",
+    "frontend/src/lib/appAssets.ts",
     "project_state.json"
   ]
 }

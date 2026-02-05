@@ -3,11 +3,13 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Trash2, Plus, MoveUp, MoveDown, Upload } from 'lucide-react';
+import { Trash2, Plus, MoveUp, MoveDown, Upload, Link as LinkIcon } from 'lucide-react';
 import { useGetSymbolSet, useUpdateSymbolSet } from '../../hooks/useQueries';
 import type { Symbol, GameSymbolSet } from '../../backend';
 import { ExternalBlob } from '../../backend';
 import { toast } from 'sonner';
+import { getCacheBustedUrl } from '../../utils/cacheBusting';
+import { importImageFromUrl } from '../../utils/imageUrlImport';
 
 type GameType = 'slots' | 'dice' | 'cards' | 'wheel';
 
@@ -18,11 +20,12 @@ interface SymbolWithPreview extends Omit<Symbol, 'image'> {
 
 export function SymbolSetEditor() {
   const [selectedGame, setSelectedGame] = useState<GameType>('slots');
-  const { data: symbolSet, isLoading } = useGetSymbolSet(selectedGame);
+  const { data: symbolSet, isLoading, refetch } = useGetSymbolSet(selectedGame);
   const updateSymbolSet = useUpdateSymbolSet();
   
   const [symbols, setSymbols] = useState<SymbolWithPreview[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [urlInputs, setUrlInputs] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (symbolSet) {
@@ -31,7 +34,8 @@ export function SymbolSetEditor() {
         id: s.id,
         name: s.name,
         image: s.image,
-        previewUrl: s.image instanceof ExternalBlob ? s.image.getDirectURL() : undefined,
+        updatedAt: s.updatedAt,
+        previewUrl: getCacheBustedUrl(s.image, s.updatedAt),
       }));
       setSymbols(symbolsWithPreview);
     }
@@ -42,6 +46,7 @@ export function SymbolSetEditor() {
       id: `symbol_${Date.now()}`,
       name: 'New Symbol',
       image: '',
+      updatedAt: BigInt(Date.now()),
       previewUrl: undefined,
     };
     setSymbols([...symbols, newSymbol]);
@@ -112,12 +117,40 @@ export function SymbolSetEditor() {
         ...newSymbols[index],
         image: blob,
         previewUrl,
+        updatedAt: BigInt(Date.now()),
       };
       setSymbols(newSymbols);
       toast.success('Image uploaded successfully');
     } catch (error) {
       toast.error('Failed to read image file');
       console.error('Image upload error:', error);
+    }
+  };
+
+  const handleImageUrlImport = async (index: number) => {
+    const url = urlInputs[index]?.trim();
+    if (!url) {
+      toast.error('Please enter a URL');
+      return;
+    }
+
+    const blob = await importImageFromUrl(url);
+    if (blob) {
+      const newSymbols = [...symbols];
+      newSymbols[index] = {
+        ...newSymbols[index],
+        image: blob,
+        previewUrl: url, // Use URL as preview temporarily
+        updatedAt: BigInt(Date.now()),
+      };
+      setSymbols(newSymbols);
+      
+      // Clear URL input
+      setUrlInputs(prev => {
+        const updated = { ...prev };
+        delete updated[index];
+        return updated;
+      });
     }
   };
 
@@ -157,6 +190,7 @@ export function SymbolSetEditor() {
       id: s.id,
       name: s.name,
       image: s.image instanceof ExternalBlob ? s.image : ExternalBlob.fromBytes(new Uint8Array()),
+      updatedAt: s.updatedAt || BigInt(Date.now()),
     }));
 
     // Build the full symbol set
@@ -172,6 +206,8 @@ export function SymbolSetEditor() {
         gameType: selectedGame,
         symbolSet: fullSymbolSet,
       });
+      // Refetch to get the latest data with new blob references
+      await refetch();
       setEditingIndex(null);
     } catch (error) {
       // Error already handled by mutation
@@ -273,7 +309,7 @@ export function SymbolSetEditor() {
                   />
                 </div>
                 <div>
-                  <Label className="text-white text-xs">Image</Label>
+                  <Label className="text-white text-xs">Image from File</Label>
                   <div className="flex gap-2">
                     <Input
                       type="file"
@@ -295,12 +331,32 @@ export function SymbolSetEditor() {
                       <Upload className="w-4 h-4" />
                     </Button>
                   </div>
-                  {symbol.previewUrl && (
-                    <div className="mt-2 p-2 bg-white rounded">
-                      <img src={symbol.previewUrl} alt="Preview" className="w-full h-32 object-contain" />
-                    </div>
-                  )}
                 </div>
+                <div>
+                  <Label className="text-white text-xs">Or Paste Image URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="url"
+                      value={urlInputs[index] || ''}
+                      onChange={(e) => setUrlInputs(prev => ({ ...prev, [index]: e.target.value }))}
+                      placeholder="https://example.com/image.png"
+                      className="bg-white/10 border-white/20 text-white"
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => handleImageUrlImport(index)}
+                      className="shrink-0"
+                    >
+                      <LinkIcon className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                {symbol.previewUrl && (
+                  <div className="mt-2 p-2 bg-white rounded">
+                    <img src={symbol.previewUrl} alt="Preview" className="w-full h-32 object-contain" />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -326,7 +382,7 @@ export function SymbolSetEditor() {
       </div>
 
       <div className="text-xs text-gray-400 space-y-1">
-        <p>• Upload images from your camera roll or device</p>
+        <p>• Upload images from your device or paste image URLs</p>
         <p>• Supported formats: JPG, PNG, GIF, WebP</p>
         <p>• Maximum file size: 5MB per image</p>
         <p>• Maximum 100 symbols per game</p>

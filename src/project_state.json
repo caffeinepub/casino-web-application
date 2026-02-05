@@ -1,394 +1,423 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 14,
-  "summary": "Diamond Casino is a full-stack web casino application built on the Internet Computer. The backend is a Motoko canister that manages user profiles, diamond balances, transaction and game histories, leaderboards, casino settings, role-based access control, and Stripe checkout session integration via HTTP outcalls. The frontend is a React + Tailwind app using Internet Identity for authentication and TanStack React Query for all canister calls, providing a game lobby and wallet management (deposit/withdraw + wagering requirement) with an admin area. Recent scope requests include: allowing admins to upload and manage raster image assets (from device camera roll) to customize game symbols and lobby cover images; editing game names/descriptions; adding a bottom edge-to-edge ad banner; updating footer branding text; improving specific game UI elements (blackjack card faces as images; wheel-of-fortune segments labeled with prizes); and removing several games (Card Draw, Roulette, Coin Flip, Number Guess, Mines).",
+  "projectStateVersion": 3,
+  "summary": "Diamond Casino is a full-stack Internet Computer (ICP) casino dApp. A Motoko backend canister provides role-based access control (admin/user/guest), user registration with a diamond signup bonus, a diamond balance ledger (deposits/withdrawals + game win/loss transactions), wagering-based withdrawal eligibility, persistent casino settings, per-game symbol set configuration (image blobs with updatedAt timestamps), a customizable game catalog (titles/descriptions/cover images), a unified app-asset store for replaceable UI images (logos/icons/game covers), site branding (display name), global theme configuration (colors + gradients), and a configurable bottom promotional banner. The React + Tailwind/shadcn/ui frontend authenticates users via Internet Identity, centralizes canister calls via TanStack React Query hooks, renders a game lobby with leaderboards, wallet UI, and admin settings, and includes several playable betting mini-games (Slots, Blackjack, Dice Roll, Wheel Spin, Jackpot) that record outcomes to the backend. The system also includes Stripe integration via IC HTTP outcalls (checkout sessions/status) and blob-storage maintenance/cycles refill endpoints.",
   "existing_features": [
     {
       "id": "IF-1",
       "title": "Internet Identity authentication provider",
       "synonyms": [
-        "II auth",
-        "AuthClient login/logout",
-        "Identity context"
+        "Internet Identity",
+        "AuthClient",
+        "InternetIdentityProvider"
       ],
-      "description": "Provides an InternetIdentityProvider and useInternetIdentity hook to initialize/load an AuthClient, manage login state, perform login via the configured II URL, and logout/clear identity while exposing status flags (initializing/logging-in/success/error).",
+      "description": "Provides a React context wrapping `@dfinity/auth-client` to initialize the client, restore stored delegations on load, perform login/logout, and expose detailed status flags and errors to the UI.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-2",
-      "title": "IC canister actor creation and lifecycle management",
+      "title": "Identity-bound backend actor creation and query cache reset",
       "synonyms": [
-        "useActor hook",
-        "authenticated/anonymous actor",
-        "actor rehydration"
+        "useActor",
+        "createActorWithConfig",
+        "actor recreation"
       ],
-      "description": "Creates an anonymous actor when not authenticated and an authenticated actor bound to the user’s identity when logged in. On actor creation it initializes access control with a secret token and invalidates/refetches non-actor React Query queries when the actor changes.",
+      "description": "Creates an anonymous actor when unauthenticated and an identity-bound actor when authenticated. When the actor instance changes (e.g., identity change), all non-actor React Query caches are invalidated/refetched to keep data consistent.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-3",
-      "title": "Role-based access control with admin bootstrap secret",
+      "title": "Role-based access control with admin bootstrap secret token",
       "synonyms": [
         "AccessControl",
         "MixinAuthorization",
-        "admin/user/guest roles"
+        "CAFFEINE_ADMIN_TOKEN"
       ],
-      "description": "Implements user roles (admin/user/guest) in Motoko. The canister exposes role queries (getCallerUserRole, isCallerAdmin) and an admin-only role assignment method. Initialization uses CAFFEINE_ADMIN_TOKEN (env var) and a user-provided secret so the first eligible principal can become admin.",
+      "description": "Implements per-principal roles (#admin/#user/#guest). The first principal to initialize with the correct secret token becomes admin; others become users. Provides role lookup, admin checks, and admin role assignment.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-4",
-      "title": "User registration and profile management with signup bonus",
+      "title": "Secure extraction and session persistence of secret URL hash parameters",
       "synonyms": [
-        "registerUser",
-        "ProfileSetupModal",
-        "caller profile"
+        "getSecretParameter",
+        "getSecretFromHash",
+        "urlParams"
       ],
-      "description": "Allows authenticated users to register a username, creates a UserProfile with initial 1000 diamond balance, and records a signup_bonus transaction. Frontend shows a forced profile setup modal when authenticated but not registered and displays toast feedback.",
+      "description": "Reads sensitive parameters from the URL hash fragment, persists them to `sessionStorage`, and clears them from the URL to reduce history/referrer leakage (used for admin bootstrap token).",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-5",
-      "title": "Balance and player statistics tracking",
+      "title": "User registration and profile persistence with signup bonus",
       "synonyms": [
-        "diamondBalance stats",
-        "wins/losses/streak tracking"
+        "registerUser",
+        "UserProfile",
+        "signup_bonus"
       ],
-      "description": "Tracks per-user balance and multiple cumulative stats (diamonds wagered, won/lost, total games, total bet/won, wins/losses, streaks) updated on game outcome recording; frontend displays these in header, lobby, and wallet UI.",
+      "description": "Allows authenticated users to register a username. Creates a stored user profile with an initial 1000-diamond balance and writes a corresponding `signup_bonus` ledger transaction.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-6",
-      "title": "Wagering requirement and withdrawal eligibility enforcement",
+      "title": "Diamond wallet ledger (balance, deposits, withdrawals, transaction history UI)",
       "synonyms": [
-        "hasCompletedWageringRequirement",
-        "withdrawal lock"
+        "deposit",
+        "withdraw",
+        "getBalance",
+        "getTransactionHistory",
+        "WalletModal"
       ],
-      "description": "Enforces a wagering requirement (>= 1000 diamonds wagered) before enabling withdrawals; backend checks eligibility and frontend displays progress and blocks withdrawal actions until met.",
+      "description": "Maintains per-user balances and an append-only transaction history. UI provides a wallet modal with balance and stats, deposit/withdraw actions (min constraints from casino settings), and a filterable transaction history feed.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-7",
-      "title": "Deposits and withdrawals with configurable minimums",
+      "title": "Wagering requirement tracking and withdrawal eligibility gating",
       "synonyms": [
-        "deposit",
-        "withdraw",
-        "minDeposit/minWithdrawal"
+        "diamondsWagered",
+        "hasCompletedWageringRequirement",
+        "isUserEligibleForWithdrawal"
       ],
-      "description": "Backend supports deposit/withdraw operations that adjust balances and append transactions, enforcing minDeposit/minWithdrawal and (for withdrawals) wagering completion and sufficient balance. Frontend wallet tab provides deposit/withdraw forms with minimum validation and toast notifications.",
+      "description": "Tracks diamonds wagered and blocks withdrawals until the wagering threshold is met; frontend visualizes progress and disables withdrawal UI when ineligible.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-8",
-      "title": "Transaction history recording and viewing",
+      "title": "Game outcome recording with per-user stats and game history",
       "synonyms": [
-        "ledger",
-        "wallet transactions",
-        "transaction filters"
+        "recordGameOutcome",
+        "getGameHistory",
+        "game_win",
+        "game_loss"
       ],
-      "description": "Backend records transaction entries for signup bonus, deposits, withdrawals, and game wins/losses. Frontend wallet shows scrollable history with filters (all, wins, losses, deposits, withdrawals) and per-transaction timestamps and post-transaction balances.",
+      "description": "Records game outcomes, updates user aggregates (games played, wager totals, wins/losses, streaks), updates balance, and writes win/loss transactions; users can query their historical outcomes.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-9",
-      "title": "Game outcome recording and per-user game history",
+      "title": "Leaderboards (top players by balance, wins, and streak)",
       "synonyms": [
-        "recordGameOutcome",
-        "getGameHistory"
+        "getTopPlayers",
+        "getTopPlayersByWins",
+        "getTopPlayersByStreak"
       ],
-      "description": "Backend stores a GameOutcome entry per play and updates user profile stats and a corresponding transaction. Frontend records outcomes after each game and can query game history via React Query.",
+      "description": "Computes and exposes top-N leaderboards based on diamond balance, total wins, and max streak; the lobby renders them in a tabbed panel.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-10",
-      "title": "Top player leaderboards",
+      "title": "Admin-configurable casino settings",
       "synonyms": [
-        "top players",
-        "rankings"
+        "CasinoSettings",
+        "getCasinoSettings",
+        "updateCasinoSettings"
       ],
-      "description": "Provides backend queries to fetch top 10 players sorted by (1) diamond balance, (2) total wins, and (3) max streak. Frontend lobby renders tabbed leaderboards for these three ranking modes.",
+      "description": "Admins can update configurable casino parameters (min deposit/withdrawal, house edge percentage, dealer username, currency name). All clients can read current settings for UI validation and display.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-11",
-      "title": "Casino settings management (admin)",
+      "title": "Site branding (display name) with runtime title updates",
       "synonyms": [
-        "AdminSettingsModal",
-        "updateCasinoSettings",
-        "house settings"
+        "SiteBranding",
+        "getBranding",
+        "updateBranding",
+        "document.title"
       ],
-      "description": "Backend exposes casino settings (min deposit/withdrawal, house edge %, dealer username, currency name) and admin-only updates. Frontend includes an admin-only settings modal to edit and save these values.",
+      "description": "Stores a site display name in the backend with admin-only updates and public read access. Frontend shows it in the header and updates the browser tab title accordingly.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-12",
-      "title": "Admin visibility and user management endpoints",
+      "title": "Global theme configuration applied via CSS variables",
       "synonyms": [
-        "isCallerAdmin",
-        "getAllUsers",
-        "getTotalUsers",
-        "getTransactionHistoryForUser"
+        "ThemeConfig",
+        "ThemeApplier",
+        "applyTheme",
+        "getThemeConfig",
+        "setThemeConfig"
       ],
-      "description": "Backend exposes admin-only endpoints to list all users and count them, plus viewing transaction history for any user. Frontend includes an isCallerAdmin query and conditionally exposes the admin settings entry point.",
+      "description": "Persists a global theme (colors and gradients) in the backend; the frontend fetches and applies it by writing CSS custom properties to the document root, enabling theme-driven styling across the app.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-13",
-      "title": "Stripe checkout session integration (backend)",
+      "title": "Theme editor with presets and gradient visual/raw editor",
       "synonyms": [
-        "Stripe createCheckoutSession",
-        "Stripe session status"
+        "ThemeEditor",
+        "themePresets",
+        "GradientEditorField",
+        "gradientUtils"
       ],
-      "description": "Supports configuring Stripe credentials (admin-only) and creating checkout sessions with a client_reference_id tied to the caller principal. Provides session status lookup that attempts to extract the client reference id from Stripe responses.",
+      "description": "Admin UI to edit theme colors and gradients with one-click presets. Includes a best-effort visual gradient editor (direction + stops) with a raw CSS fallback and live preview.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-14",
-      "title": "HTTP outcalls utility with response transform",
+      "title": "Bottom banner configuration and rendering",
       "synonyms": [
-        "IC http_request wrapper",
-        "OutCall module"
+        "BannerConfig",
+        "BottomBannerEditor",
+        "BottomBanner",
+        "objectFit"
       ],
-      "description": "Wraps IC management canister http_request for GET and POST with cycle budgeting, default User-Agent and idempotency header, and a transform function that strips headers from responses.",
+      "description": "Admins can configure a site-wide clickable bottom banner (enable/disable, image, destination URL, height/padding/background color, and object-fit mode). Frontend renders it fixed at the bottom of the page and opens the configured URL on click.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-15",
-      "title": "Game lobby navigation and access gating",
+      "title": "Unified app asset storage (logos, icons, game covers) with admin editor",
       "synonyms": [
-        "GameLobby",
-        "game selection",
-        "login required gate"
+        "AppAsset",
+        "AppAssetsEditor",
+        "getAllAssets",
+        "storeAsset",
+        "updateAsset"
       ],
-      "description": "Frontend lobby lists 10 games with cards and images, blocks play when unauthenticated, shows user balance when logged in, and renders a selected game component with a back-to-lobby flow.",
+      "description": "Backend stores replaceable app assets keyed by `assetId` (e.g., site logo, loading logo, diamond icon, game cover images). Admin UI supports upload/replace, progress feedback, and immediate preview with fallbacks.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-16",
-      "title": "Ten playable casino mini-games (client-side)",
+      "title": "Game catalog management with custom titles/descriptions/cover images",
       "synonyms": [
-        "Slots",
-        "Roulette",
-        "Blackjack",
-        "Coin Flip",
-        "Dice Roll",
-        "Wheel Spin",
-        "Number Guess",
-        "Card Draw",
-        "Jackpot",
-        "Mines"
+        "GameCatalogEntry",
+        "GameCatalogEditor",
+        "getAllGameCatalogEntries",
+        "addGameCatalogEntry",
+        "updateGameCatalogEntry"
       ],
-      "description": "Implements 10 distinct games with bet inputs, win/loss resolution, and backend outcome recording: Slots (3 reels multipliers), Roulette (red/black/even/odd), Blackjack (dealer AI hit to 17 and blackjack payout), Coin Flip (2x), Dice Roll (over/under target 2–12), Wheel Spin (probability-weighted multipliers), Number Guess (tiered multipliers by closeness), Card Draw (color/high-low), Jackpot (5 reels match multipliers), Mines (5 mines grid with cashout multiplier).",
+      "description": "Admins can create/update persisted game catalog entries (gameId/title/description/icon). The lobby overlays catalog data on a fixed list of supported games.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-17",
-      "title": "Canvas particle effects and easing animation utilities",
+      "title": "Per-game symbol set management with image upload, ordering, and timestamps",
       "synonyms": [
-        "ParticleSystem",
-        "confetti/sparkles/explosions",
-        "easing functions"
+        "GameSymbolSet",
+        "SymbolSetEditor",
+        "getSymbolSet",
+        "updateSymbolSet"
       ],
-      "description": "Provides a shared ParticleSystem for canvas-based visual effects (explosion, confetti, sparkles) and easing helpers (easeOutCubic, easeInOutCubic, easeOutBounce). Games use these for win celebrations, glow overlays, and motion physics.",
+      "description": "Admins can manage per-game symbol sets (slots/dice/cards/wheel): add/remove symbols, reorder, edit IDs/names, and upload images. Backend assigns `updatedAt` timestamps server-side for each symbol on update.",
       "reqIds": [],
       "version": 1
     },
     {
       "id": "IF-18",
-      "title": "Core UI shell and feedback system",
+      "title": "Consistent ExternalBlob image cache-busting with stable version tokens",
       "synonyms": [
-        "Header/Footer",
-        "ThemeProvider",
-        "toasts"
+        "getCacheBustedUrl",
+        "addVersionToUrl",
+        "updatedAt cache busting"
       ],
-      "description": "Includes a themed app shell with header branding, balance display, wallet and admin entry points, a footer attribution, and global toast notifications via sonner; uses Tailwind + dark mode theming via next-themes.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "IF-19",
-      "title": "Admin-managed slot symbol set (backend + frontend)",
-      "synonyms": [
-        "slot symbols customization",
-        "symbol set endpoints",
-        "SymbolSetEditor"
-      ],
-      "description": "Adds backend support for an admin-configurable slot symbol set, including query to fetch active symbols and an admin-only update endpoint to replace the set. Frontend extends the Admin Settings modal with a SymbolSetEditor allowing adding/replacing/removing/reordering symbols, SVG preview, and saving changes. Symbols are handled as vector-only SVG and are sanitized client-side before use.",
-      "reqIds": [
-        "REQ-1",
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "IF-20",
-      "title": "Slots game uses backend-provided symbol set with default fallback",
-      "synonyms": [
-        "dynamic slot symbols",
-        "slots symbol set query",
-        "SVG slot rendering"
-      ],
-      "description": "Updates Slots game to load the active symbol set from the backend. Handles loading/error states by falling back to the default 6 symbols. Renders custom SVG symbols in a vector-safe way without introducing raster assets.",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
-    },
-    {
-      "id": "IF-21",
-      "title": "Stable-state persistence and upgrade migrations for core canister data",
-      "synonyms": [
-        "preupgrade/postupgrade hooks",
-        "versioned state migrations",
-        "upgrade-safe storage"
-      ],
-      "description": "Adds upgrade-safe persistence for core backend state via stable storage and a migration layer, using preupgrade/postupgrade hooks to serialize/restore canister state across upgrades and support versioned schema migrations.",
-      "reqIds": [],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-backend-persisted-admin-editable-game-catalog-that-controls-per-game-the-lobby-cover-image-display-name-and-description-update-the-game-lobby-ui-to-render-its-game-cards-from-this-backend-catalog-instead-of-the-current-hardcoded-games-array-in-frontend-src-pages-gamelobby-tsx",
-      "title": "Add a backend-persisted, admin-editable \"game catalog\" that controls (per game) the lobby cover image, display name, and description; update the Game Lobby UI to render its game cards from this backend catalog instead of the current hardcoded `games` array in `frontend/src/pages/GameLobby.tsx`.",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-extend-the-admin-settings-ui-frontend-src-components-adminsettingsmodal-tsx-to-include-controls-a-new-tab-or-section-for-editing-each-game-catalog-entry-upload-replace-the-lobby-cover-image-edit-the-game-display-name-and-edit-the-description-wire-this-ui-to-the-new-backend-game-catalog-apis-using-react-query-hooks-in-frontend-src-hooks-usequeries-ts",
-      "title": "Extend the Admin Settings UI (`frontend/src/components/AdminSettingsModal.tsx`) to include controls (a new tab or section) for editing each game catalog entry: upload/replace the lobby cover image, edit the game display name, and edit the description; wire this UI to the new backend game catalog APIs using React Query hooks in `frontend/src/hooks/useQueries.ts`.",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-blackjack-rendering-frontend-src-pages-games-blackjackgame-tsx-so-the-dealt-cards-display-as-card-face-images-not-only-text-ranks-suits-by-mapping-each-drawn-card-rank-suit-to-a-specific-image-from-the-backend-provided-symbol-set-support-a-52-card-symbol-set-rank-suit-with-a-safe-fallback-to-the-current-text-rendering-when-card-images-are-not-available",
-      "title": "Update Blackjack rendering (`frontend/src/pages/games/BlackjackGame.tsx`) so the dealt cards display as card-face images (not only text ranks/suits) by mapping each drawn card (rank + suit) to a specific image from the backend-provided symbol set; support a 52-card symbol set (rank × suit) with a safe fallback to the current text rendering when card images are not available.",
-      "reqIds": [
-        "REQ-6"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-wheel-spin-game-ui-frontend-src-pages-games-wheelspingame-tsx-so-wheel-segments-display-their-prize-text-directly-on-the-wheel-segments-e-g-0x-1x-2x-etc-oriented-readably-placed-within-each-segment-while-the-wheel-spins",
-      "title": "Update the Wheel Spin game UI (`frontend/src/pages/games/WheelSpinGame.tsx`) so wheel segments display their prize text directly on the wheel segments (e.g., \"0x\", \"1x\", \"2x\", etc.), oriented/readably placed within each segment while the wheel spins.",
-      "reqIds": [
-        "REQ-7"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-horizontal-ad-banner-to-the-game-lobby-page-frontend-src-pages-gamelobby-tsx-that-is-edge-to-edge-and-pinned-to-the-bottom-of-the-page-or-viewport-as-a-distinct-banner-area",
-      "title": "Add a horizontal ad banner to the Game Lobby page (`frontend/src/pages/GameLobby.tsx`) that is edge-to-edge and pinned to the bottom of the page (or viewport) as a distinct banner area.",
+      "description": "Shared utilities append `?v=<updatedAt>` to ExternalBlob direct URLs so replaced images reliably refresh while unchanged images remain cacheable; used for app assets, banner images, catalog cover images, and symbol previews.",
       "reqIds": [
         "REQ-8"
       ],
       "version": 1
     },
     {
-      "id": "feature-update-the-footer-branding-text-in-frontend-src-components-footer-tsx-so-the-footer-displays-dexfans-2026-english-instead-of-the-current-copyright-string",
-      "title": "Update the footer branding text in `frontend/src/components/Footer.tsx` so the footer displays \"DexFans 2026\" (English) instead of the current copyright string.",
+      "id": "IF-19",
+      "title": "URL-based image import for admin image inputs",
+      "synonyms": [
+        "importImageFromUrl",
+        "image URL replacement",
+        "remote image fetch"
+      ],
+      "description": "Admin editors accept http/https image URLs, fetch the image client-side, validate content type and size (max 5MB), convert to `ExternalBlob`, and store using the same blob flow as file uploads.",
       "reqIds": [
-        "REQ-9"
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "IF-20",
+      "title": "Hidden admin unlock flow with per-session gating",
+      "synonyms": [
+        "useAdminUnlock",
+        "AdminUnlockDialog",
+        "logo click unlock",
+        "session admin mode"
+      ],
+      "description": "Admin settings UI entry points remain hidden unless both conditions are met: (1) backend reports the user is an admin and (2) the user unlocks admin mode for the current session by clicking the site logo and entering the password \"DexGod\". Includes an explicit lock action and clears unlock state on logout.",
+      "reqIds": [
+        "REQ-7",
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "IF-21",
+      "title": "Admin settings modal with tabbed configuration editors",
+      "synonyms": [
+        "AdminSettingsModal",
+        "General/Theme/Banner/Symbols/Catalog/Images"
+      ],
+      "description": "Provides a single modal with tabbed editors for branding + casino settings, theme, bottom banner, symbol sets, game catalog, and app assets, wired to backend mutations with toast feedback.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-22",
+      "title": "Game lobby with dynamic asset/catalog integration and leaderboards",
+      "synonyms": [
+        "GameLobby",
+        "lazy-loaded cover grid",
+        "user stats panel"
+      ],
+      "description": "Displays a fixed list of supported games with cover images sourced from either persisted catalog entries or fallback app assets; cover images are lazy-loaded and error-handled. Shows leaderboards and current-user stats when authenticated.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-23",
+      "title": "Playable betting mini-games integrated with backend outcome recording",
+      "synonyms": [
+        "SlotsGame",
+        "BlackjackGame",
+        "DiceRollGame",
+        "WheelSpinGame",
+        "JackpotGame"
+      ],
+      "description": "Implements multiple interactive betting games (Slots, Blackjack, Dice Roll, Wheel Spin, Jackpot) with UI validation, win/loss resolution, animations, and calls to `recordGameOutcome` to update balances, transactions, and stats.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-24",
+      "title": "Canvas particle effects and easing utilities for win animations",
+      "synonyms": [
+        "ParticleSystem",
+        "useParticleSystem",
+        "createExplosion",
+        "createConfetti",
+        "createSparkles",
+        "easeOutCubic",
+        "easeOutBounce"
+      ],
+      "description": "Provides a reusable canvas-based particle system and easing helpers used by games to render celebratory effects and smooth motion timing.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-25",
+      "title": "SVG sanitization utility for safer SVG rendering",
+      "synonyms": [
+        "sanitizeSvg",
+        "isValidSvg",
+        "renderSafeSvg"
+      ],
+      "description": "Validates/sanitizes SVG strings by blocking unsafe tags/attributes and enforcing a size limit; provides a safe fallback SVG when input is invalid.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-26",
+      "title": "Stripe checkout session creation and session status via IC HTTP outcalls",
+      "synonyms": [
+        "createCheckoutSession",
+        "getStripeSessionStatus",
+        "http_request outcalls",
+        "transform"
+      ],
+      "description": "Backend supports admin-managed Stripe configuration and user-accessible checkout session creation and status checks. Uses IC `http_request` outcalls with a response transform that strips headers.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-27",
+      "title": "Blob-storage maintenance and cycles refill endpoints",
+      "synonyms": [
+        "_caffeineStorageUpdateGatewayPrincipals",
+        "_caffeineStorageBlobsToDelete",
+        "_caffeineStorageConfirmBlobDeletion",
+        "_caffeineStorageRefillCashier"
+      ],
+      "description": "Includes maintenance endpoints for blob storage: refreshing authorized gateway principals via a cashier canister, listing and pruning dead blobs (with forced GC trigger), and cashier cycles refills under strict caller checks.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "IF-28",
+      "title": "State migration for symbol-set timestamp support",
+      "synonyms": [
+        "migration.mo",
+        "symbol updatedAt migration"
+      ],
+      "description": "Provides a migration that upgrades persisted symbol sets by adding `updatedAt` timestamps to existing symbols to support stable cache-busting and freshness tracking.",
+      "reqIds": [],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-default-site-logo-fallback-image-from-the-user-provided-upload-and-add-it-as-a-static-asset-at-frontend-public-assets-generated-site-logo-fallback-dim-256x256-png-formatted-to-a-256-256-square-and-preserving-transparency-if-present",
+      "title": "Create a default site logo fallback image from the user-provided upload and add it as a static asset at `frontend/public/assets/generated/site-logo-fallback.dim_256x256.png`, formatted to a 256×256 square and preserving transparency if present.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-generated-fallback-logo-asset-is-served-directly-from-the-frontend-static-assets-do-not-route-it-through-the-backend-canister",
+      "title": "Ensure the generated fallback logo asset is served directly from the frontend static assets (do not route it through the backend canister).",
+      "reqIds": [
+        "REQ-13"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [
-    {
-      "id": "AR-1",
-      "summary": "Upgrade all games to premium vector-only visuals (no raster images) with high-end, physics-driven animations and a futuristic neon casino style; allow cinematic camera motion where appropriate.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Admin-managed asset uploads (raster images from device/camera roll) to replace SVG-only symbols across casino games (slots, dice, cards, wheel, etc.) with backend persistence and working admin commands.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Admin-configurable game catalog: edit each game’s lobby cover image, display name, and description via admin panel with backend persistence.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-4",
-      "summary": "Lobby UI: add an edge-to-edge horizontal ad banner at the bottom of the page (admin-configurable content/asset).",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "Update site footer text to “DexFans 2026”.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Blackjack UI: render card faces using images (not generic vector cards), matching actual ranks/suits.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-7",
-      "summary": "Wheel of Fortune UI: wheel segments should display the prize text/amount on the segment itself.",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-8",
-      "summary": "Remove selected games from the casino experience: Card Draw, Roulette, Coin Flip, Number Guess, and Mines (including lobby entries and related play flows).",
-      "reqIds": [],
-      "status": "pending"
-    }
-  ],
+  "new_feature_requests": [],
   "architectural_notes": [
-    "Frontend uses TanStack React Query for data fetching/caching, invalidation, and mutations; query keys are organized by domain (profile, balance, transactions, settings, leaderboards).",
-    "Frontend authentication is handled via a custom InternetIdentityProvider using @dfinity/auth-client; identity is persisted across reloads and exposed via context + hook.",
-    "Canister actor creation is abstracted behind useActor; it creates an anonymous actor when unauthenticated and an authenticated actor when identity is present; it also calls an authorization initialization method during actor creation.",
-    "Authorization is implemented as a Motoko mixin (MixinAuthorization) included into the main canister, delegating role management to an AccessControl module (roles: admin/user/guest).",
-    "Admin bootstrap uses an environment variable (CAFFEINE_ADMIN_TOKEN) and a user-provided secret passed from the frontend via URL hash/session storage to attempt to assign the first admin.",
-    "Core backend state is held in in-memory Maps keyed by Principal for profiles, transaction history, and game outcomes; casino settings are held in a mutable record.",
-    "Stripe integration is implemented in Motoko using IC management canister http_request outcalls; outbound responses are sanitized through a transform function that strips headers.",
-    "UI is composed of reusable components (Header/Footer/Modals) and shadcn-style primitives; styling uses Tailwind with a dark-mode theme via next-themes.",
-    "Games are implemented as separate React pages and share a common backend integration pattern by calling recordGameOutcome; visuals are enhanced with a shared canvas ParticleSystem utility and easing functions.",
-    "Slot symbol customization is implemented as an admin-managed SVG symbol set: frontend sanitizes SVG input before preview/use, saves the set via admin-only canister endpoint, and the Slots game queries the active set with a fallback to built-in defaults.",
-    "Backend introduces a migration layer (migration.mo) and upgrade hooks to persist/restore core canister state in stable memory across upgrades, enabling versioned state evolution.",
-    "Backend adds a blob-storage module/mixin for managing persisted binary/SVG assets in canister state, intended for reuse by features that need durable asset storage.",
-    "Need backend asset storage and upload pipeline for admin-managed raster images (e.g., cover images, card faces, wheel/symbol assets), including validation, size limits, and serving strategy to frontend."
+    "Frontend canister calls are centralized via TanStack React Query hooks (query keys per resource; mutation success triggers invalidate/refetch) built on top of a shared `useActor` hook.",
+    "Authentication uses an Internet Identity React context wrapping `@dfinity/auth-client`, supporting identity rehydration on load plus login/logout status tracking.",
+    "Backend actor creation is identity-bound; upon authenticated actor creation the frontend calls `_initializeAccessControlWithSecret` to bootstrap roles using a secret from the URL hash/session.",
+    "Motoko backend composes cross-cutting concerns via mixins (`MixinAuthorization` for RBAC endpoints and `blob-storage/Mixin` for storage maintenance endpoints).",
+    "Backend state is held in in-memory `Map` registries (profiles, transactions, outcomes, symbol sets, catalog, assets) with a migration module for schema evolution (symbol `updatedAt`).",
+    "Theming is applied at runtime by writing CSS variables to `document.documentElement` (`ThemeApplier` + `applyTheme`), and key UI surfaces read these variables with fallbacks.",
+    "Images are stored as `ExternalBlob` and rendered via `getDirectURL()`; a shared cache-busting helper appends a stable version token (`updatedAt`) to URLs to avoid stale browser caches after replacements.",
+    "Admin UX is consolidated into a single tabbed modal containing editors for general settings, theme, banner, symbols, catalog, and images.",
+    "Admin access is gated by two layers: backend admin authorization plus a frontend per-session “unlock” password flow triggered by clicking the site logo.",
+    "Stripe integration uses IC `http_request` outcalls with a transform function that strips headers from responses before returning to canister logic."
   ],
   "known_issues": [
-    "Critical security/trust issue: all game randomness and outcomes are computed client-side (Math.random), and the backend recordGameOutcome API accepts arbitrary (gameType, betAmount, winAmount, isWin) from the caller. A malicious client can report wins and inflate balances. Outcomes must be computed/validated server-side.",
-    "House edge is configurable in CasinoSettings but is not applied/enforced in any game logic (frontend or backend).",
-    "Transaction history and game outcome arrays grow without bounds (concat append); no pagination, pruning, or size limits are enforced, risking memory growth and slower queries.",
-    "ParticleSystem resize logic scales the 2D context on every resize without resetting the transform, which can cause cumulative scaling distortion over time.",
-    "ParticleSystem event listener removal is ineffective: addEventListener uses an inline arrow function and destroy() removes a different function reference, causing a potential memory leak.",
-    "Stripe checkout body builder adds allowed countries using a fixed index ([0]) for every entry, likely producing invalid/overwritten parameters when multiple countries are provided.",
-    "Stripe JSON parsing for client_reference_id is done via fragile substring matching rather than JSON decoding; may break with formatting changes.",
-    "Frontend frequently casts BigInt balances to Number for display (e.g., Number(userProfile.diamondBalance)); large values may overflow/lose precision.",
-    "Authorization initialization depends on CAFFEINE_ADMIN_TOKEN being set; if absent, _initializeAccessControlWithSecret traps and prevents authenticated actor initialization.",
-    "Requirements conflict: project visual direction previously required vector-only graphics with no raster images, but new requests explicitly require uploading/using images (covers, blackjack cards, symbols). Visual/asset direction must be reconciled."
+    "Security/integrity: all game randomness and win/loss computation are client-side (e.g., `Math.random()`), and the backend `recordGameOutcome` trusts caller-provided `betAmount`/`winAmount`/`isWin`, enabling malicious clients to mint winnings or avoid losses.",
+    "Accounting semantics allow “break-even/push” ambiguity: frontend games sometimes set `winAmount=bet` while `isWin=false`; backend treats `isWin=false` as a loss and subtracts `betAmount`, so pushes can be incorrectly charged.",
+    "Unbounded growth: `transactionHistory` and `gameOutcomes` append indefinitely with no pagination or pruning, risking memory growth and slower queries over time.",
+    "Stripe bug: `buildCheckoutSessionBody` always uses `shipping_address_collection[allowed_countries][0]` for every country, so multiple allowed countries are encoded incorrectly.",
+    "Blob-storage env var appears misspelled: `CAFFFEINE_STORAGE_CASHIER_PRINCIPAL` (triple “F”) is required at runtime; likely deployment misconfiguration risk.",
+    "`ParticleSystem.destroy()` removes the resize listener using a new arrow function reference, so the event listener is not actually removed; additionally `resize()` repeatedly calls `ctx.scale(...)` without resetting transforms, which can accumulate scaling.",
+    "Symbol-set storage model is inconsistent: `gameSymbolSets` is keyed by `gameType` but stores a full `GameSymbolSet` value each time, which can lead to divergent copies per key depending on update patterns.",
+    "Cache-busting `updatedAt` for banner config, app assets, and game catalog entries is supplied by the client and stored as-is (not generated/validated server-side), which can lead to inconsistent timestamps and weak trust in version metadata.",
+    "Frontend admin unlock uses a hardcoded password (`DexGod`) embedded in client code; even with backend admin checks, the password is not secret and provides only UX-level obscurity.",
+    "`useAdminUnlock` listens for the `storage` event to sync state, but it uses `sessionStorage` (not shared across tabs), so cross-tab synchronization and the intended “logout in another tab” behavior is unreliable."
   ],
   "isFixRequest": false,
+  "imageRequirements": "## Required Images\n- Gold coin mascot logo on transparent background, centered with padding (site-logo-fallback.dim_256x256.png)",
+  "generatedImages": [
+    {
+      "filename": "site-logo-fallback.dim_256x256.png",
+      "description": "Gold coin mascot logo on transparent background, centered with padding",
+      "targetWidth": 256,
+      "targetHeight": 256
+    }
+  ],
   "gameProjectType": "none",
   "projectName": "Diamond Casino",
   "clarification_mode": "instant",

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useGetCallerUserProfile, useGetTopPlayers, useGetTopPlayersByWins, useGetTopPlayersByStreak, useGetAllGameCatalogEntries } from '../hooks/useQueries';
+import { useGetCallerUserProfile, useGetTopPlayers, useGetTopPlayersByWins, useGetTopPlayersByStreak, useGetAllGameCatalogEntries, useGetAllAssets } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -10,13 +10,15 @@ import { BlackjackGame } from './games/BlackjackGame';
 import { DiceRollGame } from './games/DiceRollGame';
 import { WheelSpinGame } from './games/WheelSpinGame';
 import { JackpotGame } from './games/JackpotGame';
+import { getAssetSrc } from '../lib/appAssets';
+import { getCacheBustedUrl } from '../utils/cacheBusting';
 
 const defaultGames = [
-  { id: 'slots', name: 'Slots', description: 'Classic slot machine', image: '/assets/generated/slot-reels.dim_400x300.png', component: SlotsGame },
-  { id: 'blackjack', name: 'Blackjack', description: 'Beat the dealer', image: '/assets/generated/blackjack-cards.dim_400x250.png', component: BlackjackGame },
-  { id: 'dice', name: 'Dice Roll', description: 'Roll the dice', image: '/assets/generated/dice-pair.dim_200x200.png', component: DiceRollGame },
-  { id: 'wheel', name: 'Wheel Spin', description: 'Fortune wheel', image: '/assets/generated/fortune-wheel.dim_300x300.png', component: WheelSpinGame },
-  { id: 'jackpot', name: 'Jackpot', description: 'Progressive jackpot', image: '/assets/generated/jackpot-coins.dim_400x300.png', component: JackpotGame },
+  { id: 'slots', name: 'Slots', description: 'Classic slot machine', assetId: 'slots-cover', component: SlotsGame },
+  { id: 'blackjack', name: 'Blackjack', description: 'Beat the dealer', assetId: 'blackjack-cover', component: BlackjackGame },
+  { id: 'dice', name: 'Dice Roll', description: 'Roll the dice', assetId: 'dice-cover', component: DiceRollGame },
+  { id: 'wheel', name: 'Wheel Spin', description: 'Fortune wheel', assetId: 'wheel-cover', component: WheelSpinGame },
+  { id: 'jackpot', name: 'Jackpot', description: 'Progressive jackpot', assetId: 'jackpot-cover', component: JackpotGame },
 ];
 
 const gameComponents: Record<string, React.ComponentType<{ onBack: () => void }>> = {
@@ -34,22 +36,47 @@ export function GameLobby() {
   const { data: topPlayersByWins = [] } = useGetTopPlayersByWins();
   const { data: topPlayersByStreak = [] } = useGetTopPlayersByStreak();
   const { data: catalogEntries = [] } = useGetAllGameCatalogEntries();
+  const { data: allAssets = [] } = useGetAllAssets();
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
 
   const isAuthenticated = !!identity;
 
-  const games = catalogEntries.length > 0
-    ? catalogEntries.map(entry => {
-        const defaultGame = defaultGames.find(g => g.id === entry.gameId);
-        return {
-          id: entry.gameId,
-          name: entry.title,
-          description: entry.description,
-          image: entry.icon.getDirectURL(),
-          component: defaultGame?.component || SlotsGame,
-        };
-      })
-    : defaultGames;
+  // Always render all default games, overlaying catalog entry data when available
+  const games = defaultGames.map(defaultGame => {
+    const catalogEntry = catalogEntries.find(e => e.gameId === defaultGame.id);
+    
+    // If catalog entry exists, use its data with cache-busted cover image
+    if (catalogEntry) {
+      return {
+        id: defaultGame.id,
+        name: catalogEntry.title,
+        description: catalogEntry.description,
+        image: getCacheBustedUrl(catalogEntry.icon, catalogEntry.updatedAt),
+        component: defaultGame.component,
+        hasCatalogEntry: true,
+      };
+    }
+    
+    // Otherwise, use default data with app asset (cache-busted if available)
+    const appAsset = allAssets.find(a => a.assetId === defaultGame.assetId);
+    const imageSrc = appAsset
+      ? getCacheBustedUrl(appAsset.blob, appAsset.updatedAt)
+      : getAssetSrc(defaultGame.assetId);
+    
+    return {
+      id: defaultGame.id,
+      name: defaultGame.name,
+      description: defaultGame.description,
+      image: imageSrc,
+      component: defaultGame.component,
+      hasCatalogEntry: false,
+    };
+  });
+
+  const diamondIconAsset = allAssets.find(a => a.assetId === 'diamond-icon');
+  const diamondIconSrc = diamondIconAsset
+    ? getCacheBustedUrl(diamondIconAsset.blob, diamondIconAsset.updatedAt)
+    : getAssetSrc('diamond-icon');
 
   if (selectedGame) {
     const GameComponent = gameComponents[selectedGame];
@@ -64,16 +91,41 @@ export function GameLobby() {
         <h2 className="text-4xl font-bold text-white mb-2">Game Lobby</h2>
         <p className="text-gray-300">Choose your game and start winning!</p>
         {isAuthenticated && userProfile && (
-          <div className="mt-4 inline-flex items-center gap-2 bg-yellow-500/20 px-6 py-3 rounded-full border border-yellow-500/30">
-            <img src="/assets/generated/diamond-icon-transparent.dim_64x64.png" alt="Diamond" className="w-6 h-6" />
-            <span className="text-yellow-400 font-bold text-xl">{Number(userProfile.diamondBalance).toLocaleString()} Diamonds</span>
+          <div 
+            className="mt-4 inline-flex items-center gap-2 px-6 py-3 rounded-full border"
+            style={{ 
+              background: 'var(--theme-surface-gradient, rgba(88, 28, 135, 0.2))',
+              borderColor: 'var(--theme-primary-color, #ec4899)'
+            }}
+          >
+            <img
+              src={diamondIconSrc}
+              alt="Diamond"
+              className="w-6 h-6"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                const fallback = '/assets/generated/diamond-icon-transparent.dim_64x64.png';
+                if (target.src !== fallback) {
+                  target.src = fallback;
+                }
+              }}
+            />
+            <span className="font-bold text-xl" style={{ color: 'var(--theme-primary-color, #ec4899)' }}>
+              {Number(userProfile.diamondBalance).toLocaleString()} Diamonds
+            </span>
           </div>
         )}
       </div>
 
       {!isAuthenticated && (
-        <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-6 mb-8 text-center">
-          <Lock className="w-12 h-12 text-yellow-400 mx-auto mb-3" />
+        <div 
+          className="border rounded-lg p-6 mb-8 text-center"
+          style={{ 
+            background: 'var(--theme-surface-gradient, rgba(88, 28, 135, 0.2))',
+            borderColor: 'var(--theme-primary-color, #ec4899)'
+          }}
+        >
+          <Lock className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--theme-primary-color, #ec4899)' }} />
           <h3 className="text-xl font-bold text-white mb-2">Login Required</h3>
           <p className="text-gray-300">Please login to start playing and win diamonds!</p>
         </div>
@@ -86,7 +138,23 @@ export function GameLobby() {
             {games.map((game) => (
               <Card key={game.id} className="overflow-hidden hover:shadow-xl transition-shadow bg-card/50 backdrop-blur border-white/10">
                 <div className="aspect-video overflow-hidden bg-gradient-to-br from-purple-900/50 to-blue-900/50">
-                  <img src={game.image} alt={game.name} className="w-full h-full object-cover" />
+                  <img
+                    src={game.image}
+                    alt={game.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      const defaultGame = defaultGames.find(g => g.id === game.id);
+                      if (defaultGame) {
+                        const fallback = getAssetSrc(defaultGame.assetId);
+                        if (target.src !== fallback) {
+                          target.src = fallback;
+                        }
+                      }
+                    }}
+                  />
                 </div>
                 <CardHeader>
                   <CardTitle className="text-xl">{game.name}</CardTitle>
@@ -96,7 +164,8 @@ export function GameLobby() {
                   <Button
                     onClick={() => setSelectedGame(game.id)}
                     disabled={!isAuthenticated}
-                    className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold"
+                    className="w-full font-bold text-white"
+                    style={{ background: 'var(--theme-button-gradient, linear-gradient(135deg, #ec4899, #f472b6))' }}
                   >
                     <Play className="w-4 h-4 mr-2" />
                     Play Now
@@ -139,7 +208,9 @@ export function GameLobby() {
                           </span>
                           <span className="text-sm">{player.username}</span>
                         </div>
-                        <span className="text-yellow-400 font-bold text-sm">{Number(player.diamondBalance).toLocaleString()}</span>
+                        <span className="font-bold text-sm" style={{ color: 'var(--theme-primary-color, #ec4899)' }}>
+                          {Number(player.diamondBalance).toLocaleString()}
+                        </span>
                       </div>
                     ))
                   )}
@@ -216,13 +287,6 @@ export function GameLobby() {
               </CardContent>
             </Card>
           )}
-        </div>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-purple-900 to-blue-900 border-t border-yellow-500/30 py-4 px-4 z-40">
-        <div className="container mx-auto text-center">
-          <p className="text-yellow-400 font-bold text-lg">🎰 Play Now and Win Big! 🎰</p>
-          <p className="text-white text-sm">Join thousands of players winning diamonds every day</p>
         </div>
       </div>
     </div>

@@ -10,6 +10,24 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AppAsset {
+  'assetId' : string,
+  'blob' : ExternalBlob,
+  'name' : string,
+  'description' : string,
+  'updatedAt' : Time,
+  'assetCategory' : string,
+}
+export interface BannerConfig {
+  'height' : bigint,
+  'backgroundColor' : string,
+  'objectFit' : string,
+  'enabled' : boolean,
+  'updatedAt' : Time,
+  'destinationUrl' : string,
+  'bannerImage' : [] | [ExternalBlob],
+  'padding' : bigint,
+}
 export interface CasinoSettings {
   'houseEdgePercentage' : bigint,
   'minDeposit' : bigint,
@@ -23,6 +41,7 @@ export interface GameCatalogEntry {
   'icon' : ExternalBlob,
   'gameId' : string,
   'description' : string,
+  'updatedAt' : Time,
 }
 export interface GameOutcome {
   'betAmount' : bigint,
@@ -44,6 +63,7 @@ export interface ShoppingItem {
   'priceInCents' : bigint,
   'productDescription' : string,
 }
+export interface SiteBranding { 'displayName' : string }
 export interface StripeConfiguration {
   'allowedCountries' : Array<string>,
   'secretKey' : string,
@@ -55,7 +75,16 @@ export type StripeSessionStatus = {
 export interface Symbol {
   'id' : string,
   'name' : string,
+  'updatedAt' : Time,
   'image' : ExternalBlob,
+}
+export interface ThemeConfig {
+  'primaryColor' : string,
+  'cardGradient' : string,
+  'accentColor' : string,
+  'bgGradient' : string,
+  'surfaceGradient' : string,
+  'navigationGradient' : string,
 }
 export type Time = bigint;
 export interface Transaction {
@@ -135,10 +164,15 @@ export interface _SERVICE {
     [Array<ShoppingItem>, string, string],
     string
   >,
+  'deleteAsset' : ActorMethod<[string], undefined>,
   'deposit' : ActorMethod<[bigint], undefined>,
+  'getAllAssets' : ActorMethod<[], Array<AppAsset>>,
   'getAllGameCatalogEntries' : ActorMethod<[], Array<GameCatalogEntry>>,
   'getAllUsers' : ActorMethod<[], Array<[Principal, UserProfile]>>,
+  'getAsset' : ActorMethod<[string], [] | [AppAsset]>,
   'getBalance' : ActorMethod<[], bigint>,
+  'getBannerConfig' : ActorMethod<[], [] | [BannerConfig]>,
+  'getBranding' : ActorMethod<[], SiteBranding>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCasinoSettings' : ActorMethod<[], CasinoSettings>,
@@ -146,6 +180,7 @@ export interface _SERVICE {
   'getGameHistory' : ActorMethod<[], Array<GameOutcome>>,
   'getStripeSessionStatus' : ActorMethod<[string], StripeSessionStatus>,
   'getSymbolSet' : ActorMethod<[string], GameSymbolSet>,
+  'getThemeConfig' : ActorMethod<[], [] | [ThemeConfig]>,
   'getTopPlayers' : ActorMethod<[], Array<UserProfile>>,
   'getTopPlayersByStreak' : ActorMethod<[], Array<UserProfile>>,
   'getTopPlayersByWins' : ActorMethod<[], Array<UserProfile>>,
@@ -164,13 +199,18 @@ export interface _SERVICE {
   'registerUser' : ActorMethod<[string], undefined>,
   'removeGameCatalogEntry' : ActorMethod<[string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setBannerConfig' : ActorMethod<[BannerConfig], undefined>,
   'setCurrencyName' : ActorMethod<[string], undefined>,
   'setDealerUsername' : ActorMethod<[string], undefined>,
   'setHouseEdge' : ActorMethod<[bigint], undefined>,
   'setMinDeposit' : ActorMethod<[bigint], undefined>,
   'setMinWithdrawal' : ActorMethod<[bigint], undefined>,
   'setStripeConfiguration' : ActorMethod<[StripeConfiguration], undefined>,
+  'setThemeConfig' : ActorMethod<[ThemeConfig], undefined>,
+  'storeAsset' : ActorMethod<[AppAsset], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'updateAsset' : ActorMethod<[string, AppAsset], undefined>,
+  'updateBranding' : ActorMethod<[SiteBranding], undefined>,
   'updateCasinoSettings' : ActorMethod<[CasinoSettings], undefined>,
   'updateGameCatalogEntry' : ActorMethod<[string, GameCatalogEntry], undefined>,
   'updateSymbolSet' : ActorMethod<[string, GameSymbolSet], undefined>,

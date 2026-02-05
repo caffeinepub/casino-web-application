@@ -1,131 +1,57 @@
 {
   "kind": "build_request",
-  "title": "Admin-editable lobby game catalog, labeled wheel segments, blackjack card images, lobby ad banner, and footer branding update",
+  "title": "Set uploaded image as default site logo fallback asset",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-4",
-      "text": "Add a backend-persisted, admin-editable \"game catalog\" that controls (per game) the lobby cover image, display name, and description; update the Game Lobby UI to render its game cards from this backend catalog instead of the current hardcoded `games` array in `frontend/src/pages/GameLobby.tsx`.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "In admin mode I want to be able to replace the games pictures for the cover in the lobby and the names of the game with description"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend exposes a query method to fetch the current game catalog for authenticated users.",
-        "Backend exposes an admin-only update method to modify game catalog entries (at minimum: cover image, display name, description).",
-        "Game Lobby shows the updated cover image, name, and description after an admin saves changes and the page refreshes (or React Query refetch occurs).",
-        "Non-admin users cannot update the game catalog (backend enforces admin permission and traps/returns an error).",
-        "If the backend has no stored catalog yet, the lobby still renders using the current default data (equivalent to today’s `games` list: slots/blackjack/dice/wheel/jackpot with their current default images)."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Extend the Admin Settings UI (`frontend/src/components/AdminSettingsModal.tsx`) to include controls (a new tab or section) for editing each game catalog entry: upload/replace the lobby cover image, edit the game display name, and edit the description; wire this UI to the new backend game catalog APIs using React Query hooks in `frontend/src/hooks/useQueries.ts`.",
+      "id": "REQ-12",
+      "text": "Create a default site logo fallback image from the user-provided upload and add it as a static asset at `frontend/public/assets/generated/site-logo-fallback.dim_256x256.png`, formatted to a 256×256 square and preserving transparency if present.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-1"
         ],
         "quotes": [
-          "In admin mode I want to be able to replace the games pictures for the cover in the lobby and the names of the game with description"
+          "Here is the site logo"
         ]
       },
       "acceptanceCriteria": [
-        "Admin can edit at least the five existing lobby games (slots, blackjack, dice, wheel, jackpot).",
-        "Cover image upload validates that an image is selected and shows a preview before saving.",
-        "Saving updates persists to the backend and invalidates/refetches the lobby catalog query so the lobby reflects changes without a canister redeploy.",
-        "Non-admin users do not see these editing controls (or controls are disabled), and backend still prevents updates even if a user tries to call the mutation."
+        "`frontend/public/assets/generated/site-logo-fallback.dim_256x256.png` exists and is 256×256.",
+        "When no custom `site-logo` asset is stored in the backend, the header logo renders using the new fallback image.",
+        "If the header logo image fails to load, the UI still falls back to `/assets/generated/site-logo-fallback.dim_256x256.png` without breaking layout."
       ]
     },
     {
-      "id": "REQ-6",
-      "text": "Update Blackjack rendering (`frontend/src/pages/games/BlackjackGame.tsx`) so the dealt cards display as card-face images (not only text ranks/suits) by mapping each drawn card (rank + suit) to a specific image from the backend-provided symbol set; support a 52-card symbol set (rank × suit) with a safe fallback to the current text rendering when card images are not available.",
+      "id": "REQ-13",
+      "text": "Ensure the generated fallback logo asset is served directly from the frontend static assets (do not route it through the backend canister).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-1"
         ],
         "quotes": [
-          "black jack cards need to have images of the cards on them"
+          "Here is the site logo"
         ]
       },
       "acceptanceCriteria": [
-        "When a symbol set for cards contains 52 images, each card dealt uses the correct card-face image for its rank and suit.",
-        "If the cards symbol set is missing or insufficient (e.g., fewer than 52 images), the game continues to work and falls back to the existing text display (e.g., “A♠”).",
-        "The images are rendered inside the existing card UI containers without layout overflow or distortion."
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Update the Wheel Spin game UI (`frontend/src/pages/games/WheelSpinGame.tsx`) so wheel segments display their prize text directly on the wheel segments (e.g., \"0x\", \"1x\", \"2x\", etc.), oriented/readably placed within each segment while the wheel spins.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "wheel of fortune needs to have segments that read the prize on them"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Each segment has visible prize text on the wheel itself (not only in the separate grid below).",
-        "Prize text rotates with the wheel during spins and remains legible (reasonable font size/contrast).",
-        "The existing spin behavior and outcome logic remain functional."
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "text": "Add a horizontal ad banner to the Game Lobby page (`frontend/src/pages/GameLobby.tsx`) that is edge-to-edge and pinned to the bottom of the page (or viewport) as a distinct banner area.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "in the lobby there is an ad banner horizontal edge to edge at the bottom of the page"
-        ]
-      },
-      "acceptanceCriteria": [
-        "The lobby shows a full-width banner at the bottom that spans edge-to-edge regardless of container width.",
-        "The banner does not break core lobby interactions (game card clicks, scrolling, etc.).",
-        "Banner area has default content so it is visible even before any future configuration is added."
-      ]
-    },
-    {
-      "id": "REQ-9",
-      "text": "Update the footer branding text in `frontend/src/components/Footer.tsx` so the footer displays \"DexFans 2026\" (English) instead of the current copyright string.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "the footer says DexFans 2026"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Footer visibly displays the text \"DexFans 2026\".",
-        "No remaining footer text contradicts the requested branding (e.g., remove/replace the current “© 2025…” line as needed to match the request)."
+        "The app requests the logo fallback via the path `/assets/generated/site-logo-fallback.dim_256x256.png`.",
+        "No backend endpoints or blob storage are required for the fallback logo to display."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in `backend/main.mo` (no additional backend services).",
-    "Do not edit files under `frontend/src/components/ui` (compose existing UI components instead).",
-    "Do not modify frontend immutable paths listed in SYSTEM_CONTEXT."
+    "Use English for any user-facing text.",
+    "Do not edit files under `frontend/src/components/ui`.",
+    "Keep the backend as a single Motoko actor; no new backend services."
   ],
   "nonGoals": [
-    "Do not implement third-party authentication providers beyond Internet Identity.",
-    "Do not implement real-money payments/ads integrations or external ad networks; the banner is purely UI content unless explicitly requested otherwise.",
-    "Do not address the known security issue of client-side randomness/outcome reporting in this change set unless explicitly requested."
+    "Changing the admin-uploaded `site-logo` asset behavior (this request only provides the default fallback logo).",
+    "Creating or updating a favicon/app icon set."
   ],
   "imageRequirements": {
-    "required": [],
+    "required": [
+      "Gold coin mascot logo on transparent background, centered with padding (site-logo-fallback.dim_256x256.png)"
+    ],
     "edits": []
   }
 }

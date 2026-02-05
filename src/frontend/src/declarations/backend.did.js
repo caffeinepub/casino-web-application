@@ -20,11 +20,13 @@ export const _CaffeineStorageRefillResult = IDL.Record({
   'topped_up_amount' : IDL.Opt(IDL.Nat),
 });
 export const ExternalBlob = IDL.Vec(IDL.Nat8);
+export const Time = IDL.Int;
 export const GameCatalogEntry = IDL.Record({
   'title' : IDL.Text,
   'icon' : ExternalBlob,
   'gameId' : IDL.Text,
   'description' : IDL.Text,
+  'updatedAt' : Time,
 });
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
@@ -38,7 +40,14 @@ export const ShoppingItem = IDL.Record({
   'priceInCents' : IDL.Nat,
   'productDescription' : IDL.Text,
 });
-export const Time = IDL.Int;
+export const AppAsset = IDL.Record({
+  'assetId' : IDL.Text,
+  'blob' : ExternalBlob,
+  'name' : IDL.Text,
+  'description' : IDL.Text,
+  'updatedAt' : Time,
+  'assetCategory' : IDL.Text,
+});
 export const UserProfile = IDL.Record({
   'lastLoginTime' : Time,
   'username' : IDL.Text,
@@ -57,6 +66,17 @@ export const UserProfile = IDL.Record({
   'registrationTime' : Time,
   'currentStreak' : IDL.Nat,
 });
+export const BannerConfig = IDL.Record({
+  'height' : IDL.Nat,
+  'backgroundColor' : IDL.Text,
+  'objectFit' : IDL.Text,
+  'enabled' : IDL.Bool,
+  'updatedAt' : Time,
+  'destinationUrl' : IDL.Text,
+  'bannerImage' : IDL.Opt(ExternalBlob),
+  'padding' : IDL.Nat,
+});
+export const SiteBranding = IDL.Record({ 'displayName' : IDL.Text });
 export const CasinoSettings = IDL.Record({
   'houseEdgePercentage' : IDL.Nat,
   'minDeposit' : IDL.Nat,
@@ -81,6 +101,7 @@ export const StripeSessionStatus = IDL.Variant({
 export const Symbol = IDL.Record({
   'id' : IDL.Text,
   'name' : IDL.Text,
+  'updatedAt' : Time,
   'image' : ExternalBlob,
 });
 export const GameSymbolSet = IDL.Record({
@@ -88,6 +109,14 @@ export const GameSymbolSet = IDL.Record({
   'dice' : IDL.Vec(Symbol),
   'slots' : IDL.Vec(Symbol),
   'wheel' : IDL.Vec(Symbol),
+});
+export const ThemeConfig = IDL.Record({
+  'primaryColor' : IDL.Text,
+  'cardGradient' : IDL.Text,
+  'accentColor' : IDL.Text,
+  'bgGradient' : IDL.Text,
+  'surfaceGradient' : IDL.Text,
+  'navigationGradient' : IDL.Text,
 });
 export const Transaction = IDL.Record({
   'transactionType' : IDL.Text,
@@ -154,7 +183,9 @@ export const idlService = IDL.Service({
       [IDL.Text],
       [],
     ),
+  'deleteAsset' : IDL.Func([IDL.Text], [], []),
   'deposit' : IDL.Func([IDL.Nat], [], []),
+  'getAllAssets' : IDL.Func([], [IDL.Vec(AppAsset)], ['query']),
   'getAllGameCatalogEntries' : IDL.Func(
       [],
       [IDL.Vec(GameCatalogEntry)],
@@ -165,7 +196,10 @@ export const idlService = IDL.Service({
       [IDL.Vec(IDL.Tuple(IDL.Principal, UserProfile))],
       ['query'],
     ),
+  'getAsset' : IDL.Func([IDL.Text], [IDL.Opt(AppAsset)], ['query']),
   'getBalance' : IDL.Func([], [IDL.Nat], ['query']),
+  'getBannerConfig' : IDL.Func([], [IDL.Opt(BannerConfig)], ['query']),
+  'getBranding' : IDL.Func([], [SiteBranding], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCasinoSettings' : IDL.Func([], [CasinoSettings], ['query']),
@@ -177,6 +211,7 @@ export const idlService = IDL.Service({
   'getGameHistory' : IDL.Func([], [IDL.Vec(GameOutcome)], ['query']),
   'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
   'getSymbolSet' : IDL.Func([IDL.Text], [GameSymbolSet], ['query']),
+  'getThemeConfig' : IDL.Func([], [IDL.Opt(ThemeConfig)], ['query']),
   'getTopPlayers' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
   'getTopPlayersByStreak' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
   'getTopPlayersByWins' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
@@ -204,17 +239,22 @@ export const idlService = IDL.Service({
   'registerUser' : IDL.Func([IDL.Text], [], []),
   'removeGameCatalogEntry' : IDL.Func([IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setBannerConfig' : IDL.Func([BannerConfig], [], []),
   'setCurrencyName' : IDL.Func([IDL.Text], [], []),
   'setDealerUsername' : IDL.Func([IDL.Text], [], []),
   'setHouseEdge' : IDL.Func([IDL.Nat], [], []),
   'setMinDeposit' : IDL.Func([IDL.Nat], [], []),
   'setMinWithdrawal' : IDL.Func([IDL.Nat], [], []),
   'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+  'setThemeConfig' : IDL.Func([ThemeConfig], [], []),
+  'storeAsset' : IDL.Func([AppAsset], [], []),
   'transform' : IDL.Func(
       [TransformationInput],
       [TransformationOutput],
       ['query'],
     ),
+  'updateAsset' : IDL.Func([IDL.Text, AppAsset], [], []),
+  'updateBranding' : IDL.Func([SiteBranding], [], []),
   'updateCasinoSettings' : IDL.Func([CasinoSettings], [], []),
   'updateGameCatalogEntry' : IDL.Func([IDL.Text, GameCatalogEntry], [], []),
   'updateSymbolSet' : IDL.Func([IDL.Text, GameSymbolSet], [], []),
@@ -237,11 +277,13 @@ export const idlFactory = ({ IDL }) => {
     'topped_up_amount' : IDL.Opt(IDL.Nat),
   });
   const ExternalBlob = IDL.Vec(IDL.Nat8);
+  const Time = IDL.Int;
   const GameCatalogEntry = IDL.Record({
     'title' : IDL.Text,
     'icon' : ExternalBlob,
     'gameId' : IDL.Text,
     'description' : IDL.Text,
+    'updatedAt' : Time,
   });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
@@ -255,7 +297,14 @@ export const idlFactory = ({ IDL }) => {
     'priceInCents' : IDL.Nat,
     'productDescription' : IDL.Text,
   });
-  const Time = IDL.Int;
+  const AppAsset = IDL.Record({
+    'assetId' : IDL.Text,
+    'blob' : ExternalBlob,
+    'name' : IDL.Text,
+    'description' : IDL.Text,
+    'updatedAt' : Time,
+    'assetCategory' : IDL.Text,
+  });
   const UserProfile = IDL.Record({
     'lastLoginTime' : Time,
     'username' : IDL.Text,
@@ -274,6 +323,17 @@ export const idlFactory = ({ IDL }) => {
     'registrationTime' : Time,
     'currentStreak' : IDL.Nat,
   });
+  const BannerConfig = IDL.Record({
+    'height' : IDL.Nat,
+    'backgroundColor' : IDL.Text,
+    'objectFit' : IDL.Text,
+    'enabled' : IDL.Bool,
+    'updatedAt' : Time,
+    'destinationUrl' : IDL.Text,
+    'bannerImage' : IDL.Opt(ExternalBlob),
+    'padding' : IDL.Nat,
+  });
+  const SiteBranding = IDL.Record({ 'displayName' : IDL.Text });
   const CasinoSettings = IDL.Record({
     'houseEdgePercentage' : IDL.Nat,
     'minDeposit' : IDL.Nat,
@@ -298,6 +358,7 @@ export const idlFactory = ({ IDL }) => {
   const Symbol = IDL.Record({
     'id' : IDL.Text,
     'name' : IDL.Text,
+    'updatedAt' : Time,
     'image' : ExternalBlob,
   });
   const GameSymbolSet = IDL.Record({
@@ -305,6 +366,14 @@ export const idlFactory = ({ IDL }) => {
     'dice' : IDL.Vec(Symbol),
     'slots' : IDL.Vec(Symbol),
     'wheel' : IDL.Vec(Symbol),
+  });
+  const ThemeConfig = IDL.Record({
+    'primaryColor' : IDL.Text,
+    'cardGradient' : IDL.Text,
+    'accentColor' : IDL.Text,
+    'bgGradient' : IDL.Text,
+    'surfaceGradient' : IDL.Text,
+    'navigationGradient' : IDL.Text,
   });
   const Transaction = IDL.Record({
     'transactionType' : IDL.Text,
@@ -368,7 +437,9 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Text],
         [],
       ),
+    'deleteAsset' : IDL.Func([IDL.Text], [], []),
     'deposit' : IDL.Func([IDL.Nat], [], []),
+    'getAllAssets' : IDL.Func([], [IDL.Vec(AppAsset)], ['query']),
     'getAllGameCatalogEntries' : IDL.Func(
         [],
         [IDL.Vec(GameCatalogEntry)],
@@ -379,7 +450,10 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(IDL.Principal, UserProfile))],
         ['query'],
       ),
+    'getAsset' : IDL.Func([IDL.Text], [IDL.Opt(AppAsset)], ['query']),
     'getBalance' : IDL.Func([], [IDL.Nat], ['query']),
+    'getBannerConfig' : IDL.Func([], [IDL.Opt(BannerConfig)], ['query']),
+    'getBranding' : IDL.Func([], [SiteBranding], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCasinoSettings' : IDL.Func([], [CasinoSettings], ['query']),
@@ -391,6 +465,7 @@ export const idlFactory = ({ IDL }) => {
     'getGameHistory' : IDL.Func([], [IDL.Vec(GameOutcome)], ['query']),
     'getStripeSessionStatus' : IDL.Func([IDL.Text], [StripeSessionStatus], []),
     'getSymbolSet' : IDL.Func([IDL.Text], [GameSymbolSet], ['query']),
+    'getThemeConfig' : IDL.Func([], [IDL.Opt(ThemeConfig)], ['query']),
     'getTopPlayers' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
     'getTopPlayersByStreak' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
     'getTopPlayersByWins' : IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
@@ -418,17 +493,22 @@ export const idlFactory = ({ IDL }) => {
     'registerUser' : IDL.Func([IDL.Text], [], []),
     'removeGameCatalogEntry' : IDL.Func([IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setBannerConfig' : IDL.Func([BannerConfig], [], []),
     'setCurrencyName' : IDL.Func([IDL.Text], [], []),
     'setDealerUsername' : IDL.Func([IDL.Text], [], []),
     'setHouseEdge' : IDL.Func([IDL.Nat], [], []),
     'setMinDeposit' : IDL.Func([IDL.Nat], [], []),
     'setMinWithdrawal' : IDL.Func([IDL.Nat], [], []),
     'setStripeConfiguration' : IDL.Func([StripeConfiguration], [], []),
+    'setThemeConfig' : IDL.Func([ThemeConfig], [], []),
+    'storeAsset' : IDL.Func([AppAsset], [], []),
     'transform' : IDL.Func(
         [TransformationInput],
         [TransformationOutput],
         ['query'],
       ),
+    'updateAsset' : IDL.Func([IDL.Text, AppAsset], [], []),
+    'updateBranding' : IDL.Func([SiteBranding], [], []),
     'updateCasinoSettings' : IDL.Func([CasinoSettings], [], []),
     'updateGameCatalogEntry' : IDL.Func([IDL.Text, GameCatalogEntry], [], []),
     'updateSymbolSet' : IDL.Func([IDL.Text, GameSymbolSet], [], []),

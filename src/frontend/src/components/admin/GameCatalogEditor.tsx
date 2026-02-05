@@ -6,8 +6,10 @@ import { Textarea } from '../ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { useGetAllGameCatalogEntries, useUpdateGameCatalogEntry, useAddGameCatalogEntry } from '../../hooks/useQueries';
 import { ExternalBlob } from '../../backend';
-import { Upload, Image as ImageIcon } from 'lucide-react';
+import { Upload, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { getCacheBustedUrl } from '../../utils/cacheBusting';
+import { importImageFromUrl } from '../../utils/imageUrlImport';
 
 const DEFAULT_GAMES = [
   { gameId: 'slots', title: 'Slots', description: 'Classic slot machine', defaultImage: '/assets/generated/slot-reels.dim_400x300.png' },
@@ -23,14 +25,16 @@ interface GameFormData {
   description: string;
   icon: ExternalBlob | null;
   previewUrl: string;
+  hasPersistedEntry: boolean;
 }
 
 export function GameCatalogEditor() {
-  const { data: catalogEntries = [], isLoading } = useGetAllGameCatalogEntries();
+  const { data: catalogEntries = [], isLoading, refetch } = useGetAllGameCatalogEntries();
   const updateEntry = useUpdateGameCatalogEntry();
   const addEntry = useAddGameCatalogEntry();
   const [editingGames, setEditingGames] = useState<Map<string, GameFormData>>(new Map());
   const [uploadProgress, setUploadProgress] = useState<Map<string, number>>(new Map());
+  const [urlInputs, setUrlInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const initialGames = new Map<string, GameFormData>();
@@ -39,20 +43,24 @@ export function GameCatalogEditor() {
       const existingEntry = catalogEntries.find(e => e.gameId === defaultGame.gameId);
       
       if (existingEntry) {
+        // Use persisted catalog entry data with cache-busted URL
         initialGames.set(defaultGame.gameId, {
           gameId: existingEntry.gameId,
           title: existingEntry.title,
           description: existingEntry.description,
           icon: existingEntry.icon,
-          previewUrl: existingEntry.icon.getDirectURL(),
+          previewUrl: getCacheBustedUrl(existingEntry.icon, existingEntry.updatedAt),
+          hasPersistedEntry: true,
         });
       } else {
+        // Use default game data with default image
         initialGames.set(defaultGame.gameId, {
           gameId: defaultGame.gameId,
           title: defaultGame.title,
           description: defaultGame.description,
           icon: null,
           previewUrl: defaultGame.defaultImage,
+          hasPersistedEntry: false,
         });
       }
     });
@@ -96,6 +104,33 @@ export function GameCatalogEditor() {
     }
   };
 
+  const handleImageUrlImport = async (gameId: string) => {
+    const url = urlInputs[gameId]?.trim();
+    if (!url) {
+      toast.error('Please enter a URL');
+      return;
+    }
+
+    const blob = await importImageFromUrl(url);
+    if (blob) {
+      setEditingGames(prev => {
+        const updated = new Map(prev);
+        const game = updated.get(gameId);
+        if (game) {
+          updated.set(gameId, { ...game, icon: blob, previewUrl: url });
+        }
+        return updated;
+      });
+      
+      // Clear URL input
+      setUrlInputs(prev => {
+        const updated = { ...prev };
+        delete updated[gameId];
+        return updated;
+      });
+    }
+  };
+
   const handleSave = async (gameId: string) => {
     const game = editingGames.get(gameId);
     if (!game) return;
@@ -116,15 +151,17 @@ export function GameCatalogEditor() {
         title: game.title,
         description: game.description,
         icon: game.icon,
+        updatedAt: BigInt(Date.now()),
       };
 
-      const existingEntry = catalogEntries.find(e => e.gameId === gameId);
-      
-      if (existingEntry) {
+      if (game.hasPersistedEntry) {
         await updateEntry.mutateAsync({ gameId, entry });
       } else {
         await addEntry.mutateAsync(entry);
       }
+      
+      // Refetch to get the latest data with new blob references
+      await refetch();
     } catch (error) {
       console.error('Failed to save game:', error);
     }
@@ -148,7 +185,7 @@ export function GameCatalogEditor() {
   return (
     <div className="space-y-6">
       <div className="text-sm text-gray-400 mb-4">
-        Customize the game catalog by editing titles, descriptions, and cover images for each game.
+        Customize the game catalog by editing titles, descriptions, and cover images for each game. Upload from file or paste image URL.
       </div>
 
       {Array.from(editingGames.entries()).map(([gameId, game]) => {
@@ -158,7 +195,14 @@ export function GameCatalogEditor() {
         return (
           <Card key={gameId} className="bg-card/50 backdrop-blur border-white/10">
             <CardHeader>
-              <CardTitle className="text-lg capitalize">{gameId}</CardTitle>
+              <CardTitle className="text-lg capitalize flex items-center justify-between">
+                <span>{gameId}</span>
+                {game.hasPersistedEntry && (
+                  <span className="text-xs font-normal text-green-400 bg-green-400/10 px-2 py-1 rounded">
+                    Custom Image Active
+                  </span>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -207,7 +251,7 @@ export function GameCatalogEditor() {
                       </div>
                     )}
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <input
                       type="file"
                       accept="image/*"
@@ -226,8 +270,25 @@ export function GameCatalogEditor() {
                       disabled={progress !== undefined}
                     >
                       <Upload className="w-4 h-4 mr-2" />
-                      Upload New Image
+                      {game.hasPersistedEntry ? 'Replace Image' : 'Upload New Image'}
                     </Button>
+                    <div className="flex gap-2">
+                      <Input
+                        type="url"
+                        value={urlInputs[gameId] || ''}
+                        onChange={(e) => setUrlInputs(prev => ({ ...prev, [gameId]: e.target.value }))}
+                        placeholder="Or paste image URL"
+                        className="bg-white/10 border-white/20 text-white"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleImageUrlImport(gameId)}
+                        disabled={progress !== undefined}
+                      >
+                        <LinkIcon className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

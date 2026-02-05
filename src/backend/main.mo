@@ -1,23 +1,57 @@
 import Map "mo:core/Map";
-import Text "mo:core/Text";
 import Nat "mo:core/Nat";
 import Array "mo:core/Array";
 import Time "mo:core/Time";
-import Bool "mo:core/Bool";
 import Order "mo:core/Order";
-import Iter "mo:core/Iter";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import AccessControl "authorization/access-control";
-import MixinAuthorization "authorization/MixinAuthorization";
 import Stripe "stripe/stripe";
 import OutCall "http-outcalls/outcall";
 import Storage "blob-storage/Storage";
+import Iter "mo:core/Iter";
+import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
+  public type SiteBranding = { displayName : Text };
+
+  var siteBranding : SiteBranding = { displayName = "Diamond Casino" };
+
+  public type ThemeConfig = {
+    primaryColor : Text;
+    accentColor : Text;
+    bgGradient : Text;
+    surfaceGradient : Text;
+    navigationGradient : Text;
+    cardGradient : Text;
+  };
+
+  public type BannerConfig = {
+    enabled : Bool;
+    bannerImage : ?Storage.ExternalBlob;
+    destinationUrl : Text;
+    height : Nat;
+    padding : Nat;
+    backgroundColor : Text;
+    objectFit : Text;
+    updatedAt : Time.Time;
+  };
+
+  var themeConfig : ?ThemeConfig = null;
+  var bannerConfig : ?BannerConfig = null;
+
+  public type AppAsset = {
+    assetId : Text;
+    blob : Storage.ExternalBlob;
+    name : Text;
+    description : Text;
+    assetCategory : Text;
+    updatedAt : Time.Time;
+  };
+
   public type UserProfile = {
     username : Text;
     diamondBalance : Nat;
@@ -65,6 +99,7 @@ actor {
     id : Text;
     name : Text;
     image : Storage.ExternalBlob;
+    updatedAt : Time.Time;
   };
 
   public type GameSymbolSet = {
@@ -79,13 +114,16 @@ actor {
     title : Text;
     description : Text;
     icon : Storage.ExternalBlob;
+    updatedAt : Time.Time;
   };
 
   let userProfiles = Map.empty<Principal, UserProfile>();
   let transactionHistory = Map.empty<Principal, [Transaction]>();
   let gameOutcomes = Map.empty<Principal, [GameOutcome]>();
   let gameSymbolSets = Map.empty<Text, GameSymbolSet>();
+
   let gameCatalog = Map.empty<Text, GameCatalogEntry>();
+  let appAssets = Map.empty<Text, AppAsset>();
 
   var casinoSettings : CasinoSettings = {
     minDeposit = 100;
@@ -101,6 +139,7 @@ actor {
   include MixinStorage();
 
   var stripeConfig : ?Stripe.StripeConfiguration = null;
+  var stripeConfigLastUpdated : ?Time.Time = null;
 
   func getDefaultSymbolSet() : GameSymbolSet {
     {
@@ -112,10 +151,6 @@ actor {
   };
 
   public query ({ caller }) func getSymbolSet(gameType : Text) : async GameSymbolSet {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view symbol sets");
-    };
-
     switch (gameSymbolSets.get(gameType)) {
       case (?symbolSet) { symbolSet };
       case (null) { getDefaultSymbolSet() };
@@ -127,7 +162,50 @@ actor {
       Runtime.trap("Unauthorized: Only admins can update symbol sets");
     };
 
-    gameSymbolSets.add(gameType, symbolSet);
+    let updatedSymbols = {
+      slots = symbolSet.slots.map(
+        func(symbol) {
+          {
+            id = symbol.id;
+            name = symbol.name;
+            image = symbol.image;
+            updatedAt = Time.now();
+          };
+        }
+      );
+      dice = symbolSet.dice.map(
+        func(symbol) {
+          {
+            id = symbol.id;
+            name = symbol.name;
+            image = symbol.image;
+            updatedAt = Time.now();
+          };
+        }
+      );
+      cards = symbolSet.cards.map(
+        func(symbol) {
+          {
+            id = symbol.id;
+            name = symbol.name;
+            image = symbol.image;
+            updatedAt = Time.now();
+          };
+        }
+      );
+      wheel = symbolSet.wheel.map(
+        func(symbol) {
+          {
+            id = symbol.id;
+            name = symbol.name;
+            image = symbol.image;
+            updatedAt = Time.now();
+          };
+        }
+      );
+    };
+
+    gameSymbolSets.add(gameType, updatedSymbols);
   };
 
   public shared ({ caller }) func addGameCatalogEntry(entry : GameCatalogEntry) : async () {
@@ -162,15 +240,18 @@ actor {
     gameCatalog.remove(gameId);
   };
 
-  public query func getAllGameCatalogEntries() : async [GameCatalogEntry] {
+  public query ({ caller }) func getAllGameCatalogEntries() : async [GameCatalogEntry] {
     gameCatalog.values().toArray();
   };
 
-  public query func getGameCatalogEntry(gameId : Text) : async ?GameCatalogEntry {
+  public query ({ caller }) func getGameCatalogEntry(gameId : Text) : async ?GameCatalogEntry {
     gameCatalog.get(gameId);
   };
 
   public query ({ caller }) func isStripeConfigured() : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can check Stripe configuration status");
+    };
     stripeConfig != null;
   };
 
@@ -179,9 +260,13 @@ actor {
       Runtime.trap("Unauthorized: Only admins can perform this action");
     };
     stripeConfig := ?config;
+    stripeConfigLastUpdated := ?Time.now();
   };
 
   public shared ({ caller }) func getStripeSessionStatus(sessionId : Text) : async Stripe.StripeSessionStatus {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can check session status");
+    };
     switch (stripeConfig) {
       case (null) { Runtime.trap("Stripe configuration not set") };
       case (?config) { await Stripe.getSessionStatus(config, sessionId, transform) };
@@ -189,6 +274,9 @@ actor {
   };
 
   public shared ({ caller }) func createCheckoutSession(items : [Stripe.ShoppingItem], successUrl : Text, cancelUrl : Text) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create checkout sessions");
+    };
     switch (stripeConfig) {
       case (null) { Runtime.trap("Stripe configuration not set") };
       case (?config) {
@@ -197,7 +285,7 @@ actor {
     };
   };
 
-  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+  public query ({ caller }) func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
     OutCall.transform(input);
   };
 
@@ -400,7 +488,7 @@ actor {
     };
   };
 
-  private func addTransaction(user : Principal, transaction : Transaction) {
+  func addTransaction(user : Principal, transaction : Transaction) {
     switch (transactionHistory.get(user)) {
       case (?history) {
         let newHistory = history.concat([transaction]);
@@ -530,10 +618,6 @@ actor {
   };
 
   public query ({ caller }) func getTopPlayers() : async [UserProfile] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can fetch top players");
-    };
-
     let userList = userProfiles.entries().toArray();
 
     let sorted = userList.sort(
@@ -551,10 +635,6 @@ actor {
   };
 
   public query ({ caller }) func getTopPlayersByWins() : async [UserProfile] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can fetch top players");
-    };
-
     let userList = userProfiles.entries().toArray();
 
     let sorted = userList.sort(
@@ -572,10 +652,6 @@ actor {
   };
 
   public query ({ caller }) func getTopPlayersByStreak() : async [UserProfile] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can fetch top players");
-    };
-
     let userList = userProfiles.entries().toArray();
 
     let sorted = userList.sort(
@@ -599,7 +675,7 @@ actor {
     casinoSettings := settings;
   };
 
-  public query func getCasinoSettings() : async CasinoSettings {
+  public query ({ caller }) func getCasinoSettings() : async CasinoSettings {
     casinoSettings;
   };
 
@@ -668,5 +744,76 @@ actor {
       Runtime.trap("Unauthorized: Only admins can view total users");
     };
     userProfiles.size();
+  };
+
+  public query ({ caller }) func getBranding() : async SiteBranding {
+    siteBranding;
+  };
+
+  public shared ({ caller }) func updateBranding(newBranding : SiteBranding) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can update site branding");
+    };
+    siteBranding := newBranding;
+  };
+
+  public query ({ caller }) func getThemeConfig() : async ?ThemeConfig {
+    themeConfig;
+  };
+
+  public shared ({ caller }) func setThemeConfig(newThemeConfig : ThemeConfig) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can set theme config");
+    };
+    themeConfig := ?newThemeConfig;
+  };
+
+  public query ({ caller }) func getBannerConfig() : async ?BannerConfig {
+    bannerConfig;
+  };
+
+  public shared ({ caller }) func setBannerConfig(newBannerConfig : BannerConfig) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can set banner config");
+    };
+    bannerConfig := ?newBannerConfig;
+  };
+
+  public shared ({ caller }) func storeAsset(asset : AppAsset) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can store assets");
+    };
+    appAssets.add(asset.assetId, asset);
+  };
+
+  public query ({ caller }) func getAsset(assetId : Text) : async ?AppAsset {
+    appAssets.get(assetId);
+  };
+
+  public query ({ caller }) func getAllAssets() : async [AppAsset] {
+    appAssets.values().toArray();
+  };
+
+  public shared ({ caller }) func updateAsset(assetId : Text, updatedAsset : AppAsset) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can update assets");
+    };
+
+    switch (appAssets.get(assetId)) {
+      case (null) { Runtime.trap("Asset not found") };
+      case (?_) {
+        appAssets.add(assetId, updatedAsset);
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteAsset(assetId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can delete assets");
+    };
+    if (not appAssets.containsKey(assetId)) {
+      Runtime.trap("Asset not found");
+    };
+    appAssets.remove(assetId);
   };
 };

@@ -2,11 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-a-backend-persisted-admin-editable-game-catalog-that-controls-per-game-the-lobby-cover-image-display-name-and-description-update-the-game-lobby-ui-to-render-its-game-cards-from-this-backend-catalog-instead-of-the-current-hardcoded-games-array-in-frontend-src-pages-gamelobby-tsx",
-      "featureTitle": "Add a backend-persisted, admin-editable \"game catalog\" that controls (per game) the lobby cover image, display name, and description; update the Game Lobby UI to render its game cards from this backend catalog instead of the current hardcoded `games` array in `frontend/src/pages/GameLobby.tsx`.",
+      "featureId": "feature-create-a-default-site-logo-fallback-image-from-the-user-provided-upload-and-add-it-as-a-static-asset-at-frontend-public-assets-generated-site-logo-fallback-dim-256x256-png-formatted-to-a-256-256-square-and-preserving-transparency-if-present",
+      "featureTitle": "Create a default site logo fallback image from the user-provided upload and add it as a static asset at `frontend/public/assets/generated/site-logo-fallback.dim_256x256.png`, formatted to a 256×256 square and preserving transparency if present.",
       "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/GameLobby.tsx"
+        "frontend/src/components/Header.tsx",
+        "frontend/src/lib/appAssets.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -20,17 +20,16 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-4"
+        "REQ-12"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-extend-the-admin-settings-ui-frontend-src-components-adminsettingsmodal-tsx-to-include-controls-a-new-tab-or-section-for-editing-each-game-catalog-entry-upload-replace-the-lobby-cover-image-edit-the-game-display-name-and-edit-the-description-wire-this-ui-to-the-new-backend-game-catalog-apis-using-react-query-hooks-in-frontend-src-hooks-usequeries-ts",
-      "featureTitle": "Extend the Admin Settings UI (`frontend/src/components/AdminSettingsModal.tsx`) to include controls (a new tab or section) for editing each game catalog entry: upload/replace the lobby cover image, edit the game display name, and edit the description; wire this UI to the new backend game catalog APIs using React Query hooks in `frontend/src/hooks/useQueries.ts`.",
+      "featureId": "feature-ensure-the-generated-fallback-logo-asset-is-served-directly-from-the-frontend-static-assets-do-not-route-it-through-the-backend-canister",
+      "featureTitle": "Ensure the generated fallback logo asset is served directly from the frontend static assets (do not route it through the backend canister).",
       "files": [
-        "frontend/src/components/AdminSettingsModal.tsx",
-        "frontend/src/components/admin/GameCatalogEditor.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/components/Header.tsx",
+        "frontend/src/lib/appAssets.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -44,95 +43,7 @@
         "blob-storage@4.0.0"
       ],
       "testIds": [
-        "REQ-5"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-update-blackjack-rendering-frontend-src-pages-games-blackjackgame-tsx-so-the-dealt-cards-display-as-card-face-images-not-only-text-ranks-suits-by-mapping-each-drawn-card-rank-suit-to-a-specific-image-from-the-backend-provided-symbol-set-support-a-52-card-symbol-set-rank-suit-with-a-safe-fallback-to-the-current-text-rendering-when-card-images-are-not-available",
-      "featureTitle": "Update Blackjack rendering (`frontend/src/pages/games/BlackjackGame.tsx`) so the dealt cards display as card-face images (not only text ranks/suits) by mapping each drawn card (rank + suit) to a specific image from the backend-provided symbol set; support a 52-card symbol set (rank × suit) with a safe fallback to the current text rendering when card images are not available.",
-      "files": [
-        "frontend/src/pages/games/BlackjackGame.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "stripe@3.0.0",
-        "http-outcalls@3.0.0",
-        "github-export-icp-cli@1.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-6"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-update-the-wheel-spin-game-ui-frontend-src-pages-games-wheelspingame-tsx-so-wheel-segments-display-their-prize-text-directly-on-the-wheel-segments-e-g-0x-1x-2x-etc-oriented-readably-placed-within-each-segment-while-the-wheel-spins",
-      "featureTitle": "Update the Wheel Spin game UI (`frontend/src/pages/games/WheelSpinGame.tsx`) so wheel segments display their prize text directly on the wheel segments (e.g., \"0x\", \"1x\", \"2x\", etc.), oriented/readably placed within each segment while the wheel spins.",
-      "files": [
-        "frontend/src/pages/games/WheelSpinGame.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "stripe@3.0.0",
-        "http-outcalls@3.0.0",
-        "github-export-icp-cli@1.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-7"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-horizontal-ad-banner-to-the-game-lobby-page-frontend-src-pages-gamelobby-tsx-that-is-edge-to-edge-and-pinned-to-the-bottom-of-the-page-or-viewport-as-a-distinct-banner-area",
-      "featureTitle": "Add a horizontal ad banner to the Game Lobby page (`frontend/src/pages/GameLobby.tsx`) that is edge-to-edge and pinned to the bottom of the page (or viewport) as a distinct banner area.",
-      "files": [
-        "frontend/src/pages/GameLobby.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "stripe@3.0.0",
-        "http-outcalls@3.0.0",
-        "github-export-icp-cli@1.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-8"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-update-the-footer-branding-text-in-frontend-src-components-footer-tsx-so-the-footer-displays-dexfans-2026-english-instead-of-the-current-copyright-string",
-      "featureTitle": "Update the footer branding text in `frontend/src/components/Footer.tsx` so the footer displays \"DexFans 2026\" (English) instead of the current copyright string.",
-      "files": [
-        "frontend/src/components/Footer.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "stripe@3.0.0",
-        "http-outcalls@3.0.0",
-        "github-export-icp-cli@1.0.0",
-        "blob-storage@4.0.0"
-      ],
-      "testIds": [
-        "REQ-9"
+        "REQ-13"
       ],
       "confidence": "high"
     }
